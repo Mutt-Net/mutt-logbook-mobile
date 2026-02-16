@@ -10,11 +10,11 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncManager } from '../services/sync';
-import { isConnectedToHomeWifi, getHomeWifiSSID, setHomeWifiSSID } from '../services/wifi';
+import { isConnectedToHomeWifi, getHomeWifiSSID, setHomeWifiSSID, getHomeWifiPassword, setHomeWifiPassword } from '../services/wifi';
 import { configService } from '../services/config';
 import { Card, Button, Input, Loading } from '../components/common';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.2.1';
 
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -31,6 +31,7 @@ export default function SettingsScreen() {
   const [pinInput, setPinInput] = useState('');
   const [tempApiUrl, setTempApiUrl] = useState('');
   const [tempWifiSSID, setTempWifiSSID] = useState('');
+  const [tempWifiPassword, setTempWifiPassword] = useState('');
   const [loading, setLoading] = useState(true);
 
   const loadSettings = useCallback(async () => {
@@ -102,8 +103,10 @@ export default function SettingsScreen() {
     setEditingApiUrl(true);
   };
 
-  const handleEditWifiSSID = () => {
+  const handleEditWifiSSID = async () => {
+    const currentPassword = await getHomeWifiPassword();
     setTempWifiSSID(homeWifiSSID);
+    setTempWifiPassword(currentPassword);
     setEditingWifiSSID(true);
   };
 
@@ -115,13 +118,15 @@ export default function SettingsScreen() {
   const handleSaveWifiSSIDConfirmed = async () => {
     try {
       await setHomeWifiSSID(tempWifiSSID);
+      await setHomeWifiPassword(tempWifiPassword);
       setHomeWifiSSIDState(tempWifiSSID);
       setEditingWifiSSID(false);
       setVerifyingPin(false);
       setPendingAction(null);
       setPinInput('');
+      setTempWifiPassword('');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save WiFi SSID');
+      Alert.alert('Error', 'Failed to save WiFi settings');
     }
   };
 
@@ -233,6 +238,17 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </View>
+
+          {!homeWifiConnected && homeWifiSSID && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.settingRow}>
+                <Text style={styles.wifiGuidance}>
+                  Make sure your device is connected to "{homeWifiSSID}" for auto-sync
+                </Text>
+              </View>
+            </>
+          )}
         </Card>
 
         <Text style={styles.sectionTitle}>SYNC</Text>
@@ -350,14 +366,23 @@ export default function SettingsScreen() {
 
           <View style={styles.modalContent}>
             <Input
-              label="WiFi SSID"
+              label="WiFi Network Name (SSID)"
               value={tempWifiSSID}
               onChangeText={setTempWifiSSID}
-              placeholder="Mushroom Kingdom"
+              placeholder="Enter your WiFi network name"
               autoCapitalize="none"
             />
+            <Input
+              label="WiFi Password"
+              value={tempWifiPassword}
+              onChangeText={setTempWifiPassword}
+              placeholder="WiFi password"
+              secureTextEntry
+              autoCapitalize="none"
+              style={{ marginTop: 16 }}
+            />
             <Text style={styles.modalHint}>
-              Enter the SSID of your home WiFi network for auto-sync. PIN required to save changes.
+              PIN required to save changes
             </Text>
           </View>
         </View>
@@ -470,6 +495,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  wifiGuidance: {
+    fontSize: 13,
+    color: '#FF9500',
+    fontStyle: 'italic',
   },
   syncButton: {
     backgroundColor: '#007AFF',

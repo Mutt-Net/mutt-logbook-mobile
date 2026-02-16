@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -12,10 +11,8 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import { Input } from '../components/common';
 import { Button } from '../components/common';
-
-const API_URL_KEY = 'mutt_api_url';
-const PIN_KEY = 'mutt_pin';
-const SETUP_COMPLETE_KEY = 'mutt_setup_complete';
+import { configService } from '../services/config';
+import { setHomeWifiSSID, setHomeWifiPassword } from '../services/wifi';
 
 interface SetupScreenProps {
   onSetupComplete: () => void;
@@ -25,11 +22,19 @@ export default function SetupScreen({ onSetupComplete }: SetupScreenProps) {
   const [apiUrl, setApiUrl] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [wifiSSID, setWifiSSID] = useState('');
+  const [wifiPassword, setWifiPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ apiUrl?: string; pin?: string; confirmPin?: string }>({});
+  const [errors, setErrors] = useState<{
+    apiUrl?: string;
+    pin?: string;
+    confirmPin?: string;
+    wifiSSID?: string;
+    wifiPassword?: string;
+  }>({});
 
   const validateForm = (): boolean => {
-    const newErrors: { apiUrl?: string; pin?: string; confirmPin?: string } = {};
+    const newErrors: typeof errors = {};
 
     if (!apiUrl.trim()) {
       newErrors.apiUrl = 'API URL is required';
@@ -49,6 +54,14 @@ export default function SetupScreen({ onSetupComplete }: SetupScreenProps) {
       newErrors.confirmPin = 'PINs do not match';
     }
 
+    if (!wifiSSID.trim()) {
+      newErrors.wifiSSID = 'WiFi SSID is required';
+    }
+
+    if (!wifiPassword.trim()) {
+      newErrors.wifiPassword = 'WiFi password is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -60,9 +73,12 @@ export default function SetupScreen({ onSetupComplete }: SetupScreenProps) {
 
     setLoading(true);
     try {
-      await SecureStore.setItemAsync(API_URL_KEY, apiUrl.trim());
-      await SecureStore.setItemAsync(PIN_KEY, pin);
-      await SecureStore.setItemAsync(SETUP_COMPLETE_KEY, 'true');
+      await configService.setApiUrl(apiUrl.trim());
+      await configService.setPin(pin);
+      await setHomeWifiSSID(wifiSSID.trim());
+      await setHomeWifiPassword(wifiPassword);
+      await configService.isSetupComplete();
+      await SecureStore.setItemAsync('mutt_setup_complete', 'true');
       onSetupComplete();
     } catch (error) {
       Alert.alert('Setup Failed', 'Failed to save settings. Please try again.');
@@ -130,6 +146,31 @@ export default function SetupScreen({ onSetupComplete }: SetupScreenProps) {
             This PIN protects access to your settings
           </Text>
 
+          <Text style={[styles.sectionTitle, styles.sectionSpacing]}>HOME WIFI</Text>
+
+          <Input
+            label="WiFi Network Name (SSID)"
+            value={wifiSSID}
+            onChangeText={setWifiSSID}
+            placeholder="Enter your WiFi network name"
+            autoCapitalize="none"
+            autoCorrect={false}
+            error={errors.wifiSSID}
+          />
+
+          <Input
+            label="WiFi Password"
+            value={wifiPassword}
+            onChangeText={setWifiPassword}
+            placeholder="WiFi password"
+            secureTextEntry
+            autoCapitalize="none"
+            error={errors.wifiPassword}
+          />
+          <Text style={styles.hint}>
+            Required for auto-sync when connected to your home WiFi
+          </Text>
+
           <Button
             title={loading ? 'Setting up...' : 'Complete Setup'}
             onPress={handleSetup}
@@ -194,5 +235,3 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
 });
-
-export { API_URL_KEY, PIN_KEY, SETUP_COMPLETE_KEY };
