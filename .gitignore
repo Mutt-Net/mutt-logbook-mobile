@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+
+# Android
+android/
+android/app/build/
+*.jks
+*.keystore
+
+# iOS
+ios/
+*.xcworkspace
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Environment - create a .env file with your config
+.env
+.env.local
+# Example .env file:
+# API_URL=http://192.168.0.179:5000
+# HOME_WIFI_SSID=Mushroom Kingdom
+
+# Misc
+.DS_Store
+*.pem
+
+# TypeScript
+*.tsbuildinfo
