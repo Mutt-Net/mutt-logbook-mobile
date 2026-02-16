@@ -32,6 +32,10 @@ coverage/
 # Misc
 .DS_Store
 *.pem
+*.key
+credentials.json
+config.py
+settings.py
 
 # TypeScript
 *.tsbuildinfo

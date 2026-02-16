@@ -15,7 +15,6 @@ import apiService from './api';
 import { addWifiListener, removeWifiListener } from './wifi';
 
 const LAST_SYNC_KEY = 'last_sync_timestamp';
-const HOME_WIFI_SSID = 'Mushroom Kingdom';
 
 export interface SyncResult {
   success: boolean;
@@ -75,6 +74,7 @@ class SyncManager {
   private static instance: SyncManager;
   private isAutoSyncEnabled = false;
   private isSyncing = false;
+  private wifiUnsubscribe: (() => void) | null = null;
 
   private constructor() {}
 
@@ -89,7 +89,7 @@ class SyncManager {
     if (this.isAutoSyncEnabled) return;
 
     this.isAutoSyncEnabled = true;
-    addWifiListener(async (isHomeWifi) => {
+    this.wifiUnsubscribe = addWifiListener(async (isHomeWifi) => {
       if (isHomeWifi && !this.isSyncing) {
         try {
           await this.syncAll();
@@ -102,7 +102,10 @@ class SyncManager {
 
   stopAutoSync(): void {
     this.isAutoSyncEnabled = false;
-    removeWifiListener();
+    if (this.wifiUnsubscribe) {
+      this.wifiUnsubscribe();
+      this.wifiUnsubscribe = null;
+    }
   }
 
   getLastSyncTime(): Promise<string | null> {

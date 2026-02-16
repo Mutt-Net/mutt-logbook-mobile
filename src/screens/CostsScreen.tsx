@@ -60,13 +60,36 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
   }, [vehicleId]);
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    
+    const fetchData = async () => {
+      await loadData();
+      if (!cancelled) {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   useEffect(() => {
-    if (!loading) {
-      loadData();
-    }
+    let cancelled = false;
+    
+    const fetchData = async () => {
+      if (!loading) {
+        await loadData();
+      }
+    };
+    
+    fetchData();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [vehicleId]);
 
   const onRefresh = useCallback(async () => {

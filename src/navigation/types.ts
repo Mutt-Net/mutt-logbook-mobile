@@ -4,22 +4,45 @@ import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigat
 
 export type DashboardStackParamList = {
   DashboardHome: undefined;
-  DashboardDetail: undefined;
+  Maintenance: { vehicleId?: number };
+  Mods: { vehicleId?: number };
+  Costs: { vehicleId?: number };
+  Fuel: { vehicleId?: number };
+  Notes: { vehicleId?: number };
+  VCDS: { vehicleId?: number };
+  Guides: { vehicleId?: number };
+  Reminders: { vehicleId?: number };
+  Vehicle: { vehicleId?: number };
 };
 
 export type OverviewStackParamList = {
   OverviewHome: undefined;
-  OverviewDetail: undefined;
+  Maintenance: { vehicleId?: number };
+  Mods: { vehicleId?: number };
+  Costs: { vehicleId?: number };
+  Fuel: { vehicleId?: number };
+  Notes: { vehicleId?: number };
+  VCDS: { vehicleId?: number };
+  Guides: { vehicleId?: number };
+  Reminders: { vehicleId?: number };
+  Vehicle: { vehicleId?: number };
 };
 
 export type AddStackParamList = {
   AddHome: undefined;
-  AddForm: undefined;
+  Maintenance: { vehicleId?: number };
+  Mods: { vehicleId?: number };
+  Costs: { vehicleId?: number };
+  Fuel: { vehicleId?: number };
+  Notes: { vehicleId?: number };
+  VCDS: { vehicleId?: number };
+  Guides: { vehicleId?: number };
+  Reminders: { vehicleId?: number };
+  Vehicle: { vehicleId?: number };
 };
 
 export type SettingsStackParamList = {
   SettingsHome: undefined;
-  SettingsDetail: undefined;
 };
 
 export type RootTabParamList = {

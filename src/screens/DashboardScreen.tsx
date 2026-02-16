@@ -98,13 +98,36 @@ export default function DashboardScreen() {
   }, [loadVehicles, loadDashboardData]);
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    
+    const fetchData = async () => {
+      await loadData();
+      if (!cancelled) {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   useEffect(() => {
-    if (selectedVehicleId) {
-      loadDashboardData();
-    }
+    let cancelled = false;
+    
+    const fetchDashboardData = async () => {
+      if (selectedVehicleId) {
+        await loadDashboardData();
+      }
+    };
+    
+    fetchDashboardData();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [selectedVehicleId, loadDashboardData]);
 
   const onRefresh = useCallback(async () => {

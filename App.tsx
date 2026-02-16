@@ -4,6 +4,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation';
 import { initDatabase } from './src/services/database';
 import syncManager from './src/services/sync';
+import { VehicleProvider } from './src/context/VehicleContext';
+import { configService } from './src/services/config';
+import SetupScreen from './src/screens/SetupScreen';
 
 const Loading = () => (
   <View style={styles.loadingContainer}>
@@ -21,7 +24,17 @@ const ErrorView = ({ message, onRetry }: { message: string; onRetry: () => void 
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
+  const [isSetup, setIsSetup] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const checkSetup = async () => {
+    try {
+      const setup = await configService.isSetupComplete();
+      setIsSetup(setup);
+    } catch (err) {
+      setError('Failed to load configuration');
+    }
+  };
 
   const initialize = async () => {
     try {
@@ -35,8 +48,27 @@ export default function App() {
   };
 
   useEffect(() => {
-    initialize();
+    checkSetup();
   }, []);
+
+  useEffect(() => {
+    if (isSetup === true) {
+      initialize();
+    }
+  }, [isSetup]);
+
+  const handleSetupComplete = async () => {
+    setIsSetup(true);
+    await initialize();
+  };
+
+  if (isSetup === null) {
+    return <Loading />;
+  }
+
+  if (!isSetup) {
+    return <SetupScreen onSetupComplete={handleSetupComplete} />;
+  }
 
   if (error) {
     return <ErrorView message={error} onRetry={initialize} />;
@@ -47,9 +79,11 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <AppNavigator />
-    </NavigationContainer>
+    <VehicleProvider>
+      <NavigationContainer>
+        <AppNavigator />
+      </NavigationContainer>
+    </VehicleProvider>
   );
 }
 

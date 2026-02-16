@@ -81,13 +81,36 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
   }, [vehicleId]);
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    
+    const fetchData = async () => {
+      await loadData();
+      if (!cancelled) {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   useEffect(() => {
-    if (!loading) {
-      loadData();
-    }
+    let cancelled = false;
+    
+    const fetchData = async () => {
+      if (!loading) {
+        await loadData();
+      }
+    };
+    
+    fetchData();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [vehicleId]);
 
   useEffect(() => {

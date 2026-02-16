@@ -10,30 +10,36 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncManager } from '../services/sync';
-import { isConnectedToHomeWifi } from '../services/wifi';
+import { isConnectedToHomeWifi, getHomeWifiSSID, setHomeWifiSSID } from '../services/wifi';
+import { configService } from '../services/config';
 import { Card, Button, Input, Loading } from '../components/common';
 
-const API_URL_KEY = 'api_url';
-const HOME_WIFI_SSID = 'Mushroom Kingdom';
 const APP_VERSION = '1.0.0';
 
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
 export default function SettingsScreen() {
-  const [apiUrl, setApiUrl] = useState('http://192.168.0.179:5000');
+  const [apiUrl, setApiUrl] = useState('');
   const [homeWifiConnected, setHomeWifiConnected] = useState(false);
+  const [homeWifiSSID, setHomeWifiSSIDState] = useState('Mushroom Kingdom');
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [editingApiUrl, setEditingApiUrl] = useState(false);
+  const [editingWifiSSID, setEditingWifiSSID] = useState(false);
+  const [verifyingPin, setVerifyingPin] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'apiUrl' | 'wifiSSID' | null>(null);
+  const [pinInput, setPinInput] = useState('');
   const [tempApiUrl, setTempApiUrl] = useState('');
+  const [tempWifiSSID, setTempWifiSSID] = useState('');
   const [loading, setLoading] = useState(true);
 
   const loadSettings = useCallback(async () => {
     try {
-      const [savedApiUrl, lastSync, wifiConnected] = await Promise.all([
-        AsyncStorage.getItem(API_URL_KEY),
+      const [savedApiUrl, lastSync, wifiConnected, savedWifiSSID] = await Promise.all([
+        configService.getApiUrl(),
         syncManager.getLastSyncTime(),
         isConnectedToHomeWifi(),
+        getHomeWifiSSID(),
       ]);
 
       if (savedApiUrl) {
@@ -41,6 +47,7 @@ export default function SettingsScreen() {
       }
       setLastSyncTime(lastSync);
       setHomeWifiConnected(wifiConnected);
+      setHomeWifiSSIDState(savedWifiSSID);
     } catch (error) {
       console.warn('Failed to load settings:', error);
     } finally {
@@ -73,10 +80,18 @@ export default function SettingsScreen() {
   };
 
   const handleSaveApiUrl = async () => {
+    setPendingAction('apiUrl');
+    setVerifyingPin(true);
+  };
+
+  const handleSaveApiUrlConfirmed = async () => {
     try {
-      await AsyncStorage.setItem(API_URL_KEY, tempApiUrl);
+      await configService.setApiUrl(tempApiUrl);
       setApiUrl(tempApiUrl);
       setEditingApiUrl(false);
+      setVerifyingPin(false);
+      setPendingAction(null);
+      setPinInput('');
     } catch (error) {
       Alert.alert('Error', 'Failed to save API URL');
     }
@@ -85,6 +100,50 @@ export default function SettingsScreen() {
   const handleEditApiUrl = () => {
     setTempApiUrl(apiUrl);
     setEditingApiUrl(true);
+  };
+
+  const handleEditWifiSSID = () => {
+    setTempWifiSSID(homeWifiSSID);
+    setEditingWifiSSID(true);
+  };
+
+  const handleSaveWifiSSID = async () => {
+    setPendingAction('wifiSSID');
+    setVerifyingPin(true);
+  };
+
+  const handleSaveWifiSSIDConfirmed = async () => {
+    try {
+      await setHomeWifiSSID(tempWifiSSID);
+      setHomeWifiSSIDState(tempWifiSSID);
+      setEditingWifiSSID(false);
+      setVerifyingPin(false);
+      setPendingAction(null);
+      setPinInput('');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save WiFi SSID');
+    }
+  };
+
+  const handleVerifyPin = async () => {
+    const isValid = await configService.verifyPin(pinInput);
+    if (!isValid) {
+      Alert.alert('Access Denied', 'Incorrect PIN');
+      setPinInput('');
+      return;
+    }
+
+    if (pendingAction === 'apiUrl') {
+      await handleSaveApiUrlConfirmed();
+    } else if (pendingAction === 'wifiSSID') {
+      await handleSaveWifiSSIDConfirmed();
+    }
+  };
+
+  const handleCancelPin = () => {
+    setVerifyingPin(false);
+    setPendingAction(null);
+    setPinInput('');
   };
 
   const formatLastSync = (timestamp: string | null): string => {
@@ -154,8 +213,19 @@ export default function SettingsScreen() {
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Home WiFi</Text>
               <Text style={styles.settingValue}>
-                {HOME_WIFI_SSID}
+                {homeWifiSSID}
               </Text>
+            </View>
+            <TouchableOpacity onPress={handleEditWifiSSID}>
+              <Text style={styles.editButton}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>WiFi Status</Text>
             </View>
             <View style={[styles.statusBadge, homeWifiConnected ? styles.statusConnected : styles.statusDisconnected]}>
               <Text style={styles.statusText}>
@@ -252,6 +322,77 @@ export default function SettingsScreen() {
             />
             <Text style={styles.modalHint}>
               Enter the URL of your Mutt Logbook API server
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={editingWifiSSID}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          setEditingWifiSSID(false);
+        }}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => {
+              setEditingWifiSSID(false);
+            }}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Home WiFi</Text>
+            <TouchableOpacity onPress={handleSaveWifiSSID}>
+              <Text style={styles.modalSave}>Save</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <Input
+              label="WiFi SSID"
+              value={tempWifiSSID}
+              onChangeText={setTempWifiSSID}
+              placeholder="Mushroom Kingdom"
+              autoCapitalize="none"
+            />
+            <Text style={styles.modalHint}>
+              Enter the SSID of your home WiFi network for auto-sync. PIN required to save changes.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={verifyingPin}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCancelPin}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={handleCancelPin}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Verify PIN</Text>
+            <TouchableOpacity onPress={handleVerifyPin}>
+              <Text style={styles.modalSave}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <Input
+              label="Enter 4-Digit PIN"
+              value={pinInput}
+              onChangeText={setPinInput}
+              placeholder="Enter PIN"
+              keyboardType="number-pad"
+              maxLength={4}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            <Text style={styles.modalHint}>
+              Enter your PIN to confirm changes
             </Text>
           </View>
         </View>

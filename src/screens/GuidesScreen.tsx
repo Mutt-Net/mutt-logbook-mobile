@@ -161,7 +161,8 @@ export default function GuidesScreen({ vehicleId }: GuidesScreenProps) {
         {item.is_template && (
           <View style={styles.templateBadge}>
             <Text style={styles.templateText}>Template</Text>
-        </View>
+          </View>
+        )}
       </View>
       <Text style={styles.itemTitle}>{item.title}</Text>
       {item.content && (

@@ -179,6 +179,17 @@ export const initDatabase = async (): Promise<void> => {
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
+
+    CREATE INDEX IF NOT EXISTS idx_maintenance_vehicle_id ON maintenance(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance(date DESC);
+    CREATE INDEX IF NOT EXISTS idx_costs_vehicle_id ON costs(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_mods_vehicle_id ON mods(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_notes_vehicle_id ON notes(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_vcds_faults_vehicle_id ON vcds_faults(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_fuel_entries_vehicle_id ON fuel_entries(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_reminders_vehicle_id ON reminders(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_guides_vehicle_id ON guides(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_vehicle_photos_vehicle_id ON vehicle_photos(vehicle_id);
   `);
 };
 
