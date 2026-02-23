@@ -69,6 +69,7 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<ModFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const loadData = useCallback(async () => {
@@ -129,7 +130,41 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
 
   const handleAddPress = () => {
     setFormData(initialFormData);
+    setEditingId(null);
     setModalVisible(true);
+  };
+
+  const handleEditPress = (item: Mod) => {
+    setFormData({
+      date: item.date || '',
+      mileage: item.mileage?.toString() || '',
+      category: item.category || '',
+      description: item.description || '',
+      parts: item.parts || '',
+      cost: item.cost?.toString() || '',
+      status: item.status,
+      notes: item.notes || '',
+    });
+    setEditingId(item.id);
+    setModalVisible(true);
+  };
+
+  const handleDeletePress = (item: Mod) => {
+    Alert.alert(
+      'Delete Mod',
+      `Are you sure you want to delete "${item.description || 'Mod'}" from ${item.date}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await ModService.delete(item.id);
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -140,7 +175,7 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
 
     setSaving(true);
     try {
-      await ModService.create({
+      const modData = {
         vehicle_id: vehicleId,
         date: formData.date || null,
         mileage: formData.mileage ? parseInt(formData.mileage, 10) : null,
@@ -150,7 +185,13 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
         cost: formData.cost ? parseFloat(formData.cost) : null,
         status: formData.status,
         notes: formData.notes || null,
-      });
+      };
+
+      if (editingId !== null) {
+        await ModService.update(editingId, modData);
+      } else {
+        await ModService.create(modData);
+      }
       setModalVisible(false);
       await loadData();
     } catch (error) {
@@ -227,7 +268,7 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
   const renderItem = ({ item }: { item: Mod }) => (
     <Card>
       <View style={styles.itemHeader}>
-        <View style={styles.headerLeft}>
+        <View style={styles.itemHeaderLeft}>
           <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
             <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
           </View>
@@ -250,6 +291,20 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
           <Text style={styles.itemMileage}>{item.mileage.toLocaleString()} mi</Text>
         )}
         <Text style={styles.itemCost}>{formatCurrency(item.cost)}</Text>
+      </View>
+      <View style={styles.itemActions}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditPress(item)}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeletePress(item)}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
       </View>
     </Card>
   );
@@ -332,7 +387,9 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Mod</Text>
+            <Text style={styles.modalTitle}>
+              {editingId !== null ? 'Edit Mod' : 'Add Mod'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -522,7 +579,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  headerLeft: {
+  itemHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -573,6 +630,36 @@ const styles = StyleSheet.create({
   itemCost: {
     fontSize: 16,
     color: '#30D158',
+    fontWeight: '600',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   modalContainer: {

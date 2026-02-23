@@ -2,8 +2,8 @@
 
 ## Status
 - **Total tasks:** 47
-- **Completed:** 39
-- **Remaining:** 8
+- **Completed:** 40
+- **Remaining:** 7
 
 ---
 
@@ -22,7 +22,7 @@
   - AddScreen - navigation hub for all record types
   - SettingsScreen - API URL, WiFi SSID/password, manual sync
   - SetupScreen - initial app configuration
-  - MaintenanceScreen (with edit/delete), ModsScreen, CostsScreen, FuelScreen, NotesScreen, VCDSScreen, GuidesScreen, RemindersScreen, VehicleScreen
+  - MaintenanceScreen (with edit/delete), ModsScreen (with edit/delete), CostsScreen, FuelScreen, NotesScreen, VCDSScreen, GuidesScreen, RemindersScreen, VehicleScreen
 
 - **Services:**
   - `database.ts` - complete SQLite service layer
@@ -46,8 +46,8 @@
 6. **Auto-sync trigger** - WiFi listener exists but may need refinement
 
 ### What's Missing ❌
-1. **Edit functionality** - Only MaintenanceScreen has edit (P0-01 complete), other screens need it
-2. **Delete functionality** - Only MaintenanceScreen has delete (P0-04 partial), other screens need it
+1. **Edit functionality** - Only MaintenanceScreen and ModsScreen have edit, other screens need it
+2. **Delete functionality** - Only MaintenanceScreen and ModsScreen have delete, other screens need it
 3. **Image handling** - Photo picker exists but actual file upload/storage not implemented
 4. **VCDS import/parse** - API endpoints exist but no UI for importing VCDS logs
 5. **Analytics/Dashboard API integration** - Dashboard shows local data only, no API analytics
@@ -72,10 +72,9 @@
   - Completed: 2026-02-23
   - Notes: Added editingId state, handleEditPress, pre-populates form with existing data, calls MaintenanceService.update. Also added parts_used and labor_hours fields to form data to fix TypeScript error.
 
-- [ ] **P0-02**: Implement edit functionality for ModsScreen
-  - Spec: `PROJECT_SPEC.md` (Activity: track-mods)
-  - Required tests: Edit saves changes, status transitions work
-  - Notes: Status badge should be tappable for quick changes
+- [x] **P0-02**: Implement edit functionality for ModsScreen
+  - Completed: 2026-02-23
+  - Notes: Added editingId state, handleEditPress to pre-populate form, handleDeletePress with confirmation dialog. Modal title shows Edit vs Add. Edit/Delete buttons added to each card.
 
 - [ ] **P0-03**: Implement edit functionality for CostsScreen, FuelScreen, NotesScreen, VCDSScreen, RemindersScreen
   - Spec: `PROJECT_SPEC.md` (all activities)
@@ -203,7 +202,7 @@
 ## Recommendations
 
 ### Immediate Priorities (Next Sprint)
-1. **P0-02, P0-03** - Complete edit functionality for remaining screens
+1. **P0-03** - Complete edit functionality for remaining screens (CostsScreen, FuelScreen, NotesScreen, VCDSScreen, RemindersScreen)
 2. **P0-04** - Complete delete functionality for remaining screens
 3. **P1-01** - Complete missing service methods
 
@@ -242,4 +241,4 @@
 ---
 
 *Generated: 2026-02-23*
-*Updated: 2026-02-23 (P0-01, P0-04 completed)*
+*Updated: 2026-02-23 (P0-01, P0-02, P0-04, P0-05 completed)*
