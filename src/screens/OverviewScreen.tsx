@@ -12,6 +12,8 @@ import {
   Modal,
   Dimensions,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { OverviewStackScreenProps } from '../navigation/types';
 import * as ImagePicker from 'expo-image-picker';
 import {
   VehicleService,
@@ -287,8 +289,11 @@ export default function OverviewScreen() {
     setImageModalVisible(true);
   };
 
+  const navigation = useNavigation<OverviewStackScreenProps<'OverviewHome'>['navigation']>();
+
   const navigateToScreen = (screen: string) => {
-    console.log(`Navigate to ${screen}`);
+    if (!vehicle) return;
+    navigation.navigate(screen as any, { vehicleId: vehicle.id });
   };
 
   const renderAccordionHeader = (
