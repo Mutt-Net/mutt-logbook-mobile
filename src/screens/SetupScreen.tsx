@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import * as SecureStore from 'expo-secure-store';
 import { Input } from '../components/common';
 import { Button } from '../components/common';
 import { configService } from '../services/config';
-import { setHomeWifiSSID, setHomeWifiPassword } from '../services/wifi';
+import { setHomeWifiSSID, setHomeWifiPassword, ensureLocationPermission } from '../services/wifi';
+import apiService from '../services/api';
 
 interface SetupScreenProps {
   onSetupComplete: () => void;
@@ -32,6 +33,10 @@ export default function SetupScreen({ onSetupComplete }: SetupScreenProps) {
     wifiSSID?: string;
     wifiPassword?: string;
   }>({});
+
+  useEffect(() => {
+    ensureLocationPermission();
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
@@ -74,6 +79,13 @@ export default function SetupScreen({ onSetupComplete }: SetupScreenProps) {
     setLoading(true);
     try {
       await configService.setApiUrl(apiUrl.trim());
+      
+      try {
+        await apiService.auth.setPin(pin);
+      } catch (pinError) {
+        console.log('PIN not set on server (may already exist):', pinError);
+      }
+      
       await configService.setPin(pin);
       await setHomeWifiSSID(wifiSSID.trim());
       await setHomeWifiPassword(wifiPassword);

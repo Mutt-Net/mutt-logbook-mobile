@@ -218,3 +218,46 @@ export interface FuelFormData {
   station?: string;
   notes?: string;
 }
+
+export interface Receipt {
+  id: number;
+  vehicle_id: number;
+  maintenance_id: number | null;
+  date: string | null;
+  vendor: string | null;
+  amount: number | null;
+  category: string | null;
+  notes: string | null;
+  filename: string | null;
+  created_at: string;
+}
+
+export interface Document {
+  id: number;
+  vehicle_id: number;
+  maintenance_id: number | null;
+  title: string;
+  description: string | null;
+  document_type: string | null;
+  filename: string | null;
+  uploaded_at: string;
+  created_at: string;
+}
+
+export interface ReceiptFormData {
+  vehicle_id: number;
+  maintenance_id?: number;
+  date?: string;
+  vendor?: string;
+  amount?: number;
+  category?: string;
+  notes?: string;
+}
+
+export interface DocumentFormData {
+  vehicle_id: number;
+  maintenance_id?: number;
+  title: string;
+  description?: string;
+  document_type?: string;
+}

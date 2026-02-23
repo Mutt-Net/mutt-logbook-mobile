@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncManager } from '../services/sync';
-import { isConnectedToHomeWifi, getHomeWifiSSID, setHomeWifiSSID, getHomeWifiPassword, setHomeWifiPassword } from '../services/wifi';
+import { isConnectedToHomeWifi, getHomeWifiSSID, setHomeWifiSSID, getHomeWifiPassword, setHomeWifiPassword, isApiReachable } from '../services/wifi';
 import { configService } from '../services/config';
 import { Card, Button, Input, Loading } from '../components/common';
 
@@ -20,6 +20,7 @@ type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
 export default function SettingsScreen() {
   const [apiUrl, setApiUrl] = useState('');
+  const [apiReachable, setApiReachable] = useState(false);
   const [homeWifiConnected, setHomeWifiConnected] = useState(false);
   const [homeWifiSSID, setHomeWifiSSIDState] = useState('Mushroom Kingdom');
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
@@ -36,11 +37,12 @@ export default function SettingsScreen() {
 
   const loadSettings = useCallback(async () => {
     try {
-      const [savedApiUrl, lastSync, wifiConnected, savedWifiSSID] = await Promise.all([
+      const [savedApiUrl, lastSync, wifiConnected, savedWifiSSID, apiUp] = await Promise.all([
         configService.getApiUrl(),
         syncManager.getLastSyncTime(),
         isConnectedToHomeWifi(),
         getHomeWifiSSID(),
+        isApiReachable(),
       ]);
 
       if (savedApiUrl) {
@@ -49,6 +51,7 @@ export default function SettingsScreen() {
       setLastSyncTime(lastSync);
       setHomeWifiConnected(wifiConnected);
       setHomeWifiSSIDState(savedWifiSSID);
+      setApiReachable(apiUp);
     } catch (error) {
       console.warn('Failed to load settings:', error);
     } finally {
@@ -235,6 +238,19 @@ export default function SettingsScreen() {
             <View style={[styles.statusBadge, homeWifiConnected ? styles.statusConnected : styles.statusDisconnected]}>
               <Text style={styles.statusText}>
                 {homeWifiConnected ? 'Connected' : 'Not Connected'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Server Status</Text>
+            </View>
+            <View style={[styles.statusBadge, apiReachable ? styles.statusConnected : styles.statusDisconnected]}>
+              <Text style={styles.statusText}>
+                {apiReachable ? 'Reachable' : 'Not Reachable'}
               </Text>
             </View>
           </View>

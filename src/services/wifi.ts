@@ -1,11 +1,42 @@
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+import { Platform, PermissionsAndroid } from 'react-native';
 import { configService } from './config';
 
 const HOME_WIFI_SSID_KEY = 'home_wifi_ssid';
 const DEFAULT_HOME_WIFI_SSID = '';
 
 let unsubscribeWifi: (() => void) | null = null;
+
+export const requestLocationPermission = async (): Promise<boolean> => {
+  if (Platform.OS === 'android') {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Location Permission',
+          message: 'Mutt Logbook needs location access to detect home WiFi for auto-sync.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn('Location permission error:', err);
+      return false;
+    }
+  } else {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    return status === 'granted';
+  }
+};
+
+export const ensureLocationPermission = async (): Promise<boolean> => {
+  const hasPermission = await requestLocationPermission();
+  return hasPermission;
+};
 
 export const getHomeWifiSSID = async (): Promise<string> => {
   try {
@@ -42,16 +73,61 @@ export const setHomeWifiPassword = async (password: string): Promise<void> => {
   }
 };
 
+export const isApiReachable = async (): Promise<boolean> => {
+  try {
+    const apiUrl = await configService.getApiUrl();
+    if (!apiUrl) {
+      console.log('API not reachable: No API URL configured');
+      return false;
+    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(`${apiUrl}/api/vehicles`, { 
+      method: 'GET',
+      signal: controller.signal 
+    });
+    clearTimeout(timeoutId);
+    console.log('API reachable, status:', response.status);
+    return response.ok;
+  } catch (error: any) {
+    console.log('API not reachable:', error?.message || error);
+    return false;
+  }
+};
+
+const checkWifiConnection = async (): Promise<boolean> => {
+  const netInfo = await NetInfo.fetch();
+  return netInfo.type === 'wifi';
+};
+
 export const isConnectedToHomeWifi = async (): Promise<boolean> => {
   const homeWifiSSID = await getHomeWifiSSID();
   if (!homeWifiSSID) {
     return false;
   }
+  
+  await ensureLocationPermission();
+  
   const netInfo = await NetInfo.fetch();
-  return (
-    netInfo.type === 'wifi' &&
-    netInfo.details?.ssid === homeWifiSSID
-  );
+  
+  if (netInfo.type !== 'wifi') {
+    return false;
+  }
+
+  const currentSSID = netInfo.details?.ssid;
+  
+  if (currentSSID && currentSSID === homeWifiSSID) {
+    return true;
+  }
+
+  if (!currentSSID || currentSSID === null) {
+    const reachable = await isApiReachable();
+    if (reachable) {
+      return true;
+    }
+  }
+  
+  return false;
 };
 
 export const getNetworkType = async (): Promise<string> => {
@@ -64,12 +140,30 @@ export const addWifiListener = (callback: (isHomeWifi: boolean) => void): (() =>
     unsubscribeWifi();
   }
 
+  ensureLocationPermission();
+
   unsubscribeWifi = NetInfo.addEventListener(async (state: NetInfoState) => {
     const homeWifiSSID = await getHomeWifiSSID();
-    const isHomeWifi =
-      state.type === 'wifi' &&
-      state.details?.ssid === homeWifiSSID;
-    callback(isHomeWifi);
+    
+    if (state.type !== 'wifi') {
+      callback(false);
+      return;
+    }
+
+    const currentSSID = state.details?.ssid;
+    
+    if (currentSSID && currentSSID === homeWifiSSID) {
+      callback(true);
+      return;
+    }
+
+    if (!currentSSID || currentSSID === null) {
+      const reachable = await isApiReachable();
+      callback(reachable);
+      return;
+    }
+    
+    callback(false);
   });
 
   return unsubscribeWifi;

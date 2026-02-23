@@ -24,6 +24,10 @@ export const configService = {
     return SecureStore.getItemAsync(PIN_KEY);
   },
 
+  setPin: async (pin: string): Promise<void> => {
+    await SecureStore.setItemAsync(PIN_KEY, pin);
+  },
+
   verifyPin: async (inputPin: string): Promise<boolean> => {
     const storedPin = await SecureStore.getItemAsync(PIN_KEY);
     return storedPin === inputPin;

@@ -109,6 +109,12 @@ export const apiService = {
     delete: async (id: number): Promise<void> => {
       return api.delete(`/api/vehicles/${id}`);
     },
+    export: async (id: number): Promise<any> => {
+      return api.get<any>(`/api/vehicles/${id}/export`);
+    },
+    import: async (data: any): Promise<{ id: number }> => {
+      return api.post<{ id: number }>('/api/vehicles/import', data);
+    },
   },
 
   // Maintenance
@@ -116,6 +122,10 @@ export const apiService = {
     getAll: async (vehicleId?: number): Promise<Maintenance[]> => {
       const params = vehicleId ? { vehicle_id: vehicleId } : {};
       return api.get<Maintenance[]>('/api/maintenance', { params });
+    },
+    getTimeline: async (vehicleId: number): Promise<any[]> => {
+      const params = { vehicle_id: vehicleId };
+      return api.get<any[]>('/api/maintenance/timeline', { params });
     },
     create: async (data: MaintenanceFormData): Promise<Maintenance> => {
       return api.post<Maintenance>('/api/maintenance', data);
@@ -278,12 +288,66 @@ export const apiService = {
     },
   },
 
+  // Receipts
+  receipts: {
+    getAll: async (vehicleId?: number): Promise<any[]> => {
+      const params = vehicleId ? { vehicle_id: vehicleId } : {};
+      return api.get<any[]>('/api/receipts', { params });
+    },
+    create: async (data: any): Promise<any> => {
+      return api.post<any>('/api/receipts', data);
+    },
+    update: async (id: number, data: Partial<any>): Promise<any> => {
+      return api.put<any>(`/api/receipts/${id}`, data);
+    },
+    delete: async (id: number): Promise<void> => {
+      return api.delete(`/api/receipts/${id}`);
+    },
+  },
+
+  // Documents
+  documents: {
+    getAll: async (vehicleId?: number): Promise<any[]> => {
+      const params = vehicleId ? { vehicle_id: vehicleId } : {};
+      return api.get<any[]>('/api/documents', { params });
+    },
+    create: async (data: FormData): Promise<any> => {
+      return api.post<any>('/api/documents', data);
+    },
+    delete: async (id: number): Promise<void> => {
+      return api.delete(`/api/documents/${id}`);
+    },
+  },
+
+  // Settings
+  settings: {
+    getAll: async (): Promise<Record<string, any>> => {
+      return api.get<Record<string, any>>('/api/settings');
+    },
+    update: async (key: string, value: any, valueType?: string): Promise<{ success: boolean }> => {
+      return api.put<{ success: boolean }>('/api/settings', { key, value, value_type: valueType });
+    },
+    delete: async (key: string): Promise<void> => {
+      return api.delete(`/api/settings/${key}`);
+    },
+  },
+
   // Upload
   upload: {
     file: async (file: { uri: string; name: string; type: string }): Promise<{ url: string }> => {
       const formData = new FormData();
       formData.append('file', file as any);
       return api.post<{ url: string }>('/api/upload', formData);
+    },
+  },
+
+  // Auth
+  auth: {
+    verifyPin: async (pin: string): Promise<{ valid: boolean; error?: string }> => {
+      return api.post<{ valid: boolean; error?: string }>('/api/auth/verify-pin', { pin });
+    },
+    setPin: async (pin: string): Promise<{ success: boolean }> => {
+      return api.post<{ success: boolean }>('/api/auth/set-pin', { pin });
     },
   },
 };

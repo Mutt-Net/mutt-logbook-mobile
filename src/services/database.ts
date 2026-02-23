@@ -10,6 +10,8 @@ import {
   VehiclePhoto,
   FuelEntry,
   Reminder,
+  Receipt,
+  Document,
 } from '../types';
 
 const DATABASE_NAME = 'muttlogbook.db';
@@ -180,6 +182,36 @@ export const initDatabase = async (): Promise<void> => {
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS receipts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL,
+      maintenance_id INTEGER,
+      date TEXT,
+      vendor TEXT,
+      amount REAL,
+      category TEXT,
+      notes TEXT,
+      filename TEXT,
+      created_at TEXT NOT NULL,
+      synced INTEGER NOT NULL DEFAULT 0,
+      remote_id INTEGER,
+      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL,
+      maintenance_id INTEGER,
+      title TEXT NOT NULL,
+      description TEXT,
+      document_type TEXT,
+      filename TEXT,
+      uploaded_at TEXT NOT NULL,
+      synced INTEGER NOT NULL DEFAULT 0,
+      remote_id INTEGER,
+      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_maintenance_vehicle_id ON maintenance(vehicle_id);
     CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance(date DESC);
     CREATE INDEX IF NOT EXISTS idx_costs_vehicle_id ON costs(vehicle_id);
@@ -190,6 +222,8 @@ export const initDatabase = async (): Promise<void> => {
     CREATE INDEX IF NOT EXISTS idx_reminders_vehicle_id ON reminders(vehicle_id);
     CREATE INDEX IF NOT EXISTS idx_guides_vehicle_id ON guides(vehicle_id);
     CREATE INDEX IF NOT EXISTS idx_vehicle_photos_vehicle_id ON vehicle_photos(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_receipts_vehicle_id ON receipts(vehicle_id);
+    CREATE INDEX IF NOT EXISTS idx_documents_vehicle_id ON documents(vehicle_id);
   `);
 };
 
@@ -1208,6 +1242,166 @@ export const ReminderService = {
   },
 };
 
+export const ReceiptService = {
+  async create(receipt: Omit<Receipt, 'id' | 'created_at'>): Promise<number> {
+    const database = await getDatabase();
+    const created_at = getCurrentTimestamp();
+    const result = await database.runAsync(
+      `INSERT INTO receipts (vehicle_id, maintenance_id, date, vendor, amount, category, notes, filename, created_at, synced)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      [
+        receipt.vehicle_id,
+        receipt.maintenance_id ?? null,
+        receipt.date ?? null,
+        receipt.vendor ?? null,
+        receipt.amount ?? null,
+        receipt.category ?? null,
+        receipt.notes ?? null,
+        receipt.filename ?? null,
+        created_at,
+      ]
+    );
+    return result.lastInsertRowId;
+  },
+
+  async getAll(): Promise<Receipt[]> {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<Record<string, unknown>>(
+      'SELECT * FROM receipts ORDER BY date DESC, created_at DESC'
+    );
+    return rows.map(row => mapSynced(row) as unknown as Receipt);
+  },
+
+  async getById(id: number): Promise<Receipt | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM receipts WHERE id = ?',
+      [id]
+    );
+    return row ? (mapSynced(row) as unknown as Receipt) : null;
+  },
+
+  async getByVehicle(vehicleId: number): Promise<Receipt[]> {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<Record<string, unknown>>(
+      'SELECT * FROM receipts WHERE vehicle_id = ? ORDER BY date DESC, created_at DESC',
+      [vehicleId]
+    );
+    return rows.map(row => mapSynced(row) as unknown as Receipt);
+  },
+
+  async update(id: number, receipt: Partial<Omit<Receipt, 'id' | 'created_at'>>): Promise<void> {
+    const database = await getDatabase();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    Object.entries(receipt).forEach(([key, value]) => {
+      if (value !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(value);
+      }
+    });
+
+    if (fields.length > 0) {
+      fields.push('synced = 0');
+      values.push(id);
+      await database.runAsync(
+        `UPDATE receipts SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      );
+    }
+  },
+
+  async delete(id: number): Promise<void> {
+    const database = await getDatabase();
+    await database.runAsync('DELETE FROM receipts WHERE id = ?', [id]);
+  },
+
+  async getUnsynced(): Promise<Receipt[]> {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<Record<string, unknown>>(
+      'SELECT * FROM receipts WHERE synced = 0'
+    );
+    return rows.map(row => mapSynced(row) as unknown as Receipt);
+  },
+
+  async markSynced(id: number, remoteId: number): Promise<void> {
+    const database = await getDatabase();
+    await database.runAsync(
+      'UPDATE receipts SET synced = 1, remote_id = ? WHERE id = ?',
+      [remoteId, id]
+    );
+  },
+};
+
+export const DocumentService = {
+  async create(doc: Omit<Document, 'id' | 'uploaded_at'>): Promise<number> {
+    const database = await getDatabase();
+    const uploaded_at = getCurrentTimestamp();
+    const result = await database.runAsync(
+      `INSERT INTO documents (vehicle_id, maintenance_id, title, description, document_type, filename, uploaded_at, synced)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+      [
+        doc.vehicle_id,
+        doc.maintenance_id ?? null,
+        doc.title,
+        doc.description ?? null,
+        doc.document_type ?? null,
+        doc.filename ?? null,
+        uploaded_at,
+      ]
+    );
+    return result.lastInsertRowId;
+  },
+
+  async getAll(): Promise<Document[]> {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<Record<string, unknown>>(
+      'SELECT * FROM documents ORDER BY uploaded_at DESC'
+    );
+    return rows.map(row => mapSynced(row) as unknown as Document);
+  },
+
+  async getById(id: number): Promise<Document | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM documents WHERE id = ?',
+      [id]
+    );
+    return row ? (mapSynced(row) as unknown as Document) : null;
+  },
+
+  async getByVehicle(vehicleId: number): Promise<Document[]> {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<Record<string, unknown>>(
+      'SELECT * FROM documents WHERE vehicle_id = ? ORDER BY uploaded_at DESC',
+      [vehicleId]
+    );
+    return rows.map(row => mapSynced(row) as unknown as Document);
+  },
+
+  async delete(id: number): Promise<void> {
+    const database = await getDatabase();
+    await database.runAsync('DELETE FROM documents WHERE id = ?', [id]);
+  },
+
+  async getUnsynced(): Promise<Document[]> {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<Record<string, unknown>>(
+      'SELECT * FROM documents WHERE synced = 0'
+    );
+    return rows.map(row => mapSynced(row) as unknown as Document);
+  },
+
+  async markSynced(id: number, remoteId: number): Promise<void> {
+    const database = await getDatabase();
+    await database.runAsync(
+      'UPDATE documents SET synced = 1, remote_id = ? WHERE id = ?',
+      [remoteId, id]
+    );
+  },
+};
+
 export const SyncService = {
   async getAllUnsynced() {
     const [
@@ -1221,6 +1415,8 @@ export const SyncService = {
       photos,
       fuelEntries,
       reminders,
+      receipts,
+      documents,
     ] = await Promise.all([
       VehicleService.getUnsynced(),
       MaintenanceService.getUnsynced(),
@@ -1232,6 +1428,8 @@ export const SyncService = {
       VehiclePhotoService.getUnsynced(),
       FuelEntryService.getUnsynced(),
       ReminderService.getUnsynced(),
+      ReceiptService.getUnsynced(),
+      DocumentService.getUnsynced(),
     ]);
 
     return {
@@ -1245,6 +1443,8 @@ export const SyncService = {
       photos,
       fuelEntries,
       reminders,
+      receipts,
+      documents,
     };
   },
 };
@@ -1262,5 +1462,7 @@ export default {
   VehiclePhotoService,
   FuelEntryService,
   ReminderService,
+  ReceiptService,
+  DocumentService,
   SyncService,
 };

@@ -10,6 +10,8 @@ import {
   VehiclePhotoService,
   FuelEntryService,
   ReminderService,
+  ReceiptService,
+  DocumentService,
 } from './database';
 import apiService from './api';
 import { addWifiListener, removeWifiListener } from './wifi';
@@ -29,6 +31,8 @@ export interface SyncResult {
     photos: number;
     fuel: number;
     reminders: number;
+    receipts: number;
+    documents: number;
   };
   pulled: {
     vehicles: number;
@@ -41,6 +45,8 @@ export interface SyncResult {
     photos: number;
     fuel: number;
     reminders: number;
+    receipts: number;
+    documents: number;
   };
   errors: string[];
   timestamp: string;
@@ -116,8 +122,8 @@ class SyncManager {
     if (this.isSyncing) {
       return {
         success: false,
-        pushed: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0 },
-        pulled: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0 },
+        pushed: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
+        pulled: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
         errors: ['Sync already in progress'],
         timestamp: new Date().toISOString(),
       };
@@ -126,8 +132,8 @@ class SyncManager {
     this.isSyncing = true;
     const result: SyncResult = {
       success: true,
-      pushed: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0 },
-      pulled: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0 },
+      pushed: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
+      pulled: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
       errors: [],
       timestamp: new Date().toISOString(),
     };
@@ -143,6 +149,8 @@ class SyncManager {
       await this.syncPhotos(result);
       await this.syncFuel(result);
       await this.syncReminders(result);
+      await this.syncReceipts(result);
+      await this.syncDocuments(result);
 
       await setLastSyncTimestamp(result.timestamp);
     } catch (error) {
@@ -593,6 +601,90 @@ class SyncManager {
       }
     } catch (error) {
       result.errors.push(`Reminders sync: ${error instanceof Error ? error.message : 'Failed'}`);
+    }
+  }
+
+  async syncReceipts(result: SyncResult): Promise<void> {
+    try {
+      const unsynced = await ReceiptService.getUnsynced();
+      for (const receipt of unsynced) {
+        try {
+          const created = await apiService.receipts.create({
+            vehicle_id: receipt.vehicle_id,
+            maintenance_id: receipt.maintenance_id || undefined,
+            date: receipt.date || undefined,
+            vendor: receipt.vendor || undefined,
+            amount: receipt.amount || undefined,
+            category: receipt.category || undefined,
+            notes: receipt.notes || undefined,
+          });
+          await ReceiptService.markSynced(receipt.id, created.id);
+          result.pushed.receipts++;
+        } catch (error) {
+          result.errors.push(`Receipt ${receipt.id}: ${error instanceof Error ? error.message : 'Failed to sync'}`);
+        }
+      }
+
+      const remoteReceipts = await apiService.receipts.getAll();
+      for (const remote of remoteReceipts) {
+        const existing = await ReceiptService.getById(remote.id);
+        if (!existing) {
+          await ReceiptService.create({
+            vehicle_id: remote.vehicle_id,
+            maintenance_id: remote.maintenance_id,
+            date: remote.date,
+            vendor: remote.vendor,
+            amount: remote.amount,
+            category: remote.category,
+            notes: remote.notes,
+            filename: remote.filename,
+          });
+          await ReceiptService.markSynced(remote.id, remote.id);
+          result.pulled.receipts++;
+        }
+      }
+    } catch (error) {
+      result.errors.push(`Receipts sync: ${error instanceof Error ? error.message : 'Failed'}`);
+    }
+  }
+
+  async syncDocuments(result: SyncResult): Promise<void> {
+    try {
+      const unsynced = await DocumentService.getUnsynced();
+      for (const doc of unsynced) {
+        try {
+          const created = await apiService.documents.create({
+            vehicle_id: doc.vehicle_id,
+            maintenance_id: doc.maintenance_id || undefined,
+            title: doc.title,
+            description: doc.description || undefined,
+            document_type: doc.document_type || undefined,
+          });
+          await DocumentService.markSynced(doc.id, created.id);
+          result.pushed.documents++;
+        } catch (error) {
+          result.errors.push(`Document ${doc.id}: ${error instanceof Error ? error.message : 'Failed to sync'}`);
+        }
+      }
+
+      const remoteDocs = await apiService.documents.getAll();
+      for (const remote of remoteDocs) {
+        const existing = await DocumentService.getById(remote.id);
+        if (!existing) {
+          await DocumentService.create({
+            vehicle_id: remote.vehicle_id,
+            maintenance_id: remote.maintenance_id,
+            title: remote.title,
+            description: remote.description,
+            document_type: remote.document_type,
+            filename: remote.filename,
+          });
+          await DocumentService.markSynced(remote.id, remote.id);
+          result.pulled.documents++;
+        }
+      }
+    } catch (error) {
+      result.errors.push(`Documents sync: ${error instanceof Error ? error.message : 'Failed'}`);
     }
   }
 }
