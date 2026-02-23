@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -49,6 +49,7 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<CostFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, costsData] = await Promise.all([
@@ -100,7 +101,37 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
 
   const handleAddPress = () => {
     setFormData(initialFormData);
+    setEditingId(null);
     setModalVisible(true);
+  };
+
+  const handleEditPress = (item: Cost) => {
+    setFormData({
+      date: item.date || '',
+      category: item.category || '',
+      amount: item.amount?.toString() || '',
+      description: item.description || '',
+    });
+    setEditingId(item.id);
+    setModalVisible(true);
+  };
+
+  const handleDeletePress = (item: Cost) => {
+    Alert.alert(
+      'Delete Cost Record',
+      `Are you sure you want to delete "${item.description || 'Cost'}" from ${item.date}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await CostService.delete(item.id);
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -115,13 +146,19 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
 
     setSaving(true);
     try {
-      await CostService.create({
+      const costData = {
         vehicle_id: vehicleId,
         date: formData.date || null,
         category: formData.category || null,
         amount: formData.amount ? parseFloat(formData.amount) : null,
         description: formData.description || null,
-      });
+      };
+
+      if (editingId !== null) {
+        await CostService.update(editingId, costData);
+      } else {
+        await CostService.create(costData);
+      }
       setModalVisible(false);
       await loadData();
     } catch (error) {
@@ -218,6 +255,20 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
       <View style={styles.itemFooter}>
         <Text style={styles.itemAmount}>{formatCurrency(item.amount)}</Text>
       </View>
+      <View style={styles.itemActions}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditPress(item)}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeletePress(item)}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
     </Card>
   );
 
@@ -272,7 +323,9 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Cost</Text>
+            <Text style={styles.modalTitle}>
+              {editingId !== null ? 'Edit Cost' : 'Add Cost'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -464,6 +517,36 @@ const styles = StyleSheet.create({
   itemAmount: {
     fontSize: 16,
     color: '#30D158',
+    fontWeight: '600',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   modalContainer: {

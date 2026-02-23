@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -61,6 +61,7 @@ export default function RemindersScreen({ vehicleId }: RemindersScreenProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<ReminderFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, remindersData] = await Promise.all([
@@ -112,7 +113,41 @@ export default function RemindersScreen({ vehicleId }: RemindersScreenProps) {
 
   const handleAddPress = () => {
     setFormData(initialFormData);
+    setEditingId(null);
     setModalVisible(true);
+  };
+
+  const handleEditPress = (item: Reminder) => {
+    setFormData({
+      type: item.type || '',
+      interval_miles: item.interval_miles?.toString() || '',
+      interval_months: item.interval_months?.toString() || '',
+      last_service_date: item.last_service_date || '',
+      last_service_mileage: item.last_service_mileage?.toString() || '',
+      next_due_date: item.next_due_date || '',
+      next_due_mileage: item.next_due_mileage?.toString() || '',
+      notes: item.notes || '',
+    });
+    setEditingId(item.id);
+    setModalVisible(true);
+  };
+
+  const handleDeletePress = (item: Reminder) => {
+    Alert.alert(
+      'Delete Reminder',
+      `Are you sure you want to delete the "${item.type}" reminder?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await ReminderService.delete(item.id);
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   const calculateNextDue = () => {
@@ -148,7 +183,7 @@ export default function RemindersScreen({ vehicleId }: RemindersScreenProps) {
 
     setSaving(true);
     try {
-      await ReminderService.create({
+      const reminderData = {
         vehicle_id: vehicleId,
         type: formData.type,
         interval_miles: formData.interval_miles ? parseInt(formData.interval_miles, 10) : null,
@@ -158,7 +193,13 @@ export default function RemindersScreen({ vehicleId }: RemindersScreenProps) {
         next_due_date: formData.next_due_date || null,
         next_due_mileage: formData.next_due_mileage ? parseInt(formData.next_due_mileage, 10) : null,
         notes: formData.notes || null,
-      });
+      };
+
+      if (editingId !== null) {
+        await ReminderService.update(editingId, reminderData);
+      } else {
+        await ReminderService.create(reminderData);
+      }
       setModalVisible(false);
       await loadData();
     } catch (error) {
@@ -240,6 +281,20 @@ export default function RemindersScreen({ vehicleId }: RemindersScreenProps) {
           {item.notes}
         </Text>
       )}
+      <View style={styles.itemActions}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditPress(item)}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeletePress(item)}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
     </Card>
   );
 
@@ -293,7 +348,9 @@ export default function RemindersScreen({ vehicleId }: RemindersScreenProps) {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Reminder</Text>
+            <Text style={styles.modalTitle}>
+              {editingId !== null ? 'Edit Reminder' : 'Add Reminder'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -486,6 +543,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     marginTop: 4,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,

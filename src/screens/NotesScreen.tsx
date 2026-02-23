@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -40,6 +40,7 @@ export default function NotesScreen({ vehicleId }: NotesScreenProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<NoteFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, notesData] = await Promise.all([
@@ -91,7 +92,37 @@ export default function NotesScreen({ vehicleId }: NotesScreenProps) {
 
   const handleAddPress = () => {
     setFormData(initialFormData);
+    setEditingId(null);
     setModalVisible(true);
+  };
+
+  const handleEditPress = (item: Note) => {
+    setFormData({
+      title: item.title || '',
+      date: item.date || '',
+      content: item.content || '',
+      tags: item.tags || '',
+    });
+    setEditingId(item.id);
+    setModalVisible(true);
+  };
+
+  const handleDeletePress = (item: Note) => {
+    Alert.alert(
+      'Delete Note',
+      `Are you sure you want to delete "${item.title || 'Note'}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await NoteService.delete(item.id);
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -102,13 +133,19 @@ export default function NotesScreen({ vehicleId }: NotesScreenProps) {
 
     setSaving(true);
     try {
-      await NoteService.create({
+      const noteData = {
         vehicle_id: vehicleId,
         title: formData.title || null,
         date: formData.date || null,
         content: formData.content || null,
         tags: formData.tags || null,
-      });
+      };
+
+      if (editingId !== null) {
+        await NoteService.update(editingId, noteData);
+      } else {
+        await NoteService.create(noteData);
+      }
       setModalVisible(false);
       await loadData();
     } catch (error) {
@@ -154,6 +191,20 @@ export default function NotesScreen({ vehicleId }: NotesScreenProps) {
             ))}
           </View>
         )}
+        <View style={styles.itemActions}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleEditPress(item)}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeletePress(item)}
+          >
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </Card>
     );
   };
@@ -208,7 +259,9 @@ export default function NotesScreen({ vehicleId }: NotesScreenProps) {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Note</Text>
+            <Text style={styles.modalTitle}>
+              {editingId !== null ? 'Edit Note' : 'Add Note'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -336,6 +389,36 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     color: '#8E8E93',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,

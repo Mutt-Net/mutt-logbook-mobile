@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -46,6 +46,7 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<FuelFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, fuelData] = await Promise.all([
@@ -97,7 +98,40 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
 
   const handleAddPress = () => {
     setFormData(initialFormData);
+    setEditingId(null);
     setModalVisible(true);
+  };
+
+  const handleEditPress = (item: FuelEntry) => {
+    setFormData({
+      date: item.date || '',
+      mileage: item.mileage?.toString() || '',
+      gallons: item.gallons?.toString() || '',
+      price_per_gallon: item.price_per_gallon?.toString() || '',
+      total_cost: item.total_cost?.toString() || '',
+      station: item.station || '',
+      notes: item.notes || '',
+    });
+    setEditingId(item.id);
+    setModalVisible(true);
+  };
+
+  const handleDeletePress = (item: FuelEntry) => {
+    Alert.alert(
+      'Delete Fuel Entry',
+      `Are you sure you want to delete this fuel entry from ${item.date}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await FuelEntryService.delete(item.id);
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   const handleGallonsOrPriceChange = (field: 'gallons' | 'price_per_gallon', value: string) => {
@@ -125,7 +159,7 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
 
     setSaving(true);
     try {
-      await FuelEntryService.create({
+      const fuelData = {
         vehicle_id: vehicleId,
         date: formData.date || null,
         mileage: formData.mileage ? parseInt(formData.mileage, 10) : null,
@@ -134,7 +168,13 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
         total_cost: formData.total_cost ? parseFloat(formData.total_cost) : null,
         station: formData.station || null,
         notes: formData.notes || null,
-      });
+      };
+
+      if (editingId !== null) {
+        await FuelEntryService.update(editingId, fuelData);
+      } else {
+        await FuelEntryService.create(fuelData);
+      }
       setModalVisible(false);
       await loadData();
     } catch (error) {
@@ -230,6 +270,20 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
           <Text style={styles.itemNotes} numberOfLines={1}>{item.notes}</Text>
         )}
       </View>
+      <View style={styles.itemActions}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditPress(item)}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeletePress(item)}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
     </Card>
   );
 
@@ -284,7 +338,9 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Fuel</Text>
+            <Text style={styles.modalTitle}>
+              {editingId !== null ? 'Edit Fuel' : 'Add Fuel'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -474,6 +530,36 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
     marginLeft: 8,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,

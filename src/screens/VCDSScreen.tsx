@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -42,6 +42,7 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<VCDSFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, faultsData] = await Promise.all([
@@ -93,7 +94,38 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
 
   const handleAddPress = () => {
     setFormData(initialFormData);
+    setEditingId(null);
     setModalVisible(true);
+  };
+
+  const handleEditPress = (item: VCDSFault) => {
+    setFormData({
+      address: item.address || '',
+      fault_code: item.fault_code || '',
+      component: item.component || '',
+      description: item.description || '',
+      status: item.status as 'active' | 'cleared',
+    });
+    setEditingId(item.id);
+    setModalVisible(true);
+  };
+
+  const handleDeletePress = (item: VCDSFault) => {
+    Alert.alert(
+      'Delete Fault Code',
+      `Are you sure you want to delete fault code ${item.fault_code}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await VCDSFaultService.delete(item.id);
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -104,7 +136,7 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
 
     setSaving(true);
     try {
-      await VCDSFaultService.create({
+      const faultData = {
         vehicle_id: vehicleId,
         address: formData.address || null,
         fault_code: formData.fault_code || null,
@@ -114,7 +146,13 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
         detected_date: formData.status === 'active' ? new Date().toISOString().split('T')[0] : null,
         cleared_date: formData.status === 'cleared' ? new Date().toISOString().split('T')[0] : null,
         notes: null,
-      });
+      };
+
+      if (editingId !== null) {
+        await VCDSFaultService.update(editingId, faultData);
+      } else {
+        await VCDSFaultService.create(faultData);
+      }
       setModalVisible(false);
       await loadData();
     } catch (error) {
@@ -158,6 +196,20 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
         {item.cleared_date && (
           <Text style={styles.clearedDate}>Cleared: {formatDate(item.cleared_date)}</Text>
         )}
+      </View>
+      <View style={styles.itemActions}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditPress(item)}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeletePress(item)}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
       </View>
     </Card>
   );
@@ -212,7 +264,9 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Fault Code</Text>
+            <Text style={styles.modalTitle}>
+              {editingId !== null ? 'Edit Fault Code' : 'Add Fault Code'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -390,6 +444,36 @@ const styles = StyleSheet.create({
   clearedDate: {
     fontSize: 12,
     color: '#30D158',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,
