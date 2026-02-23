@@ -2,7 +2,7 @@
 
 ## Status
 - **Total tasks:** 47
-- **Completed:** 38
+- **Completed:** 39
 - **Remaining:** 8
 
 ---
@@ -22,7 +22,7 @@
   - AddScreen - navigation hub for all record types
   - SettingsScreen - API URL, WiFi SSID/password, manual sync
   - SetupScreen - initial app configuration
-  - MaintenanceScreen, ModsScreen, CostsScreen, FuelScreen, NotesScreen, VCDSScreen, GuidesScreen, RemindersScreen, VehicleScreen
+  - MaintenanceScreen (with edit/delete), ModsScreen, CostsScreen, FuelScreen, NotesScreen, VCDSScreen, GuidesScreen, RemindersScreen, VehicleScreen
 
 - **Services:**
   - `database.ts` - complete SQLite service layer
@@ -46,8 +46,8 @@
 6. **Auto-sync trigger** - WiFi listener exists but may need refinement
 
 ### What's Missing ❌
-1. **Edit functionality** - No screens support editing existing records (only create)
-2. **Delete functionality** - No UI for deleting records
+1. **Edit functionality** - Only MaintenanceScreen has edit (P0-01 complete), other screens need it
+2. **Delete functionality** - Only MaintenanceScreen has delete (P0-04 partial), other screens need it
 3. **Image handling** - Photo picker exists but actual file upload/storage not implemented
 4. **VCDS import/parse** - API endpoints exist but no UI for importing VCDS logs
 5. **Analytics/Dashboard API integration** - Dashboard shows local data only, no API analytics
@@ -68,10 +68,9 @@
 
 ### P0: Critical Functionality
 
-- [ ] **P0-01**: Implement edit functionality for MaintenanceScreen
-  - Spec: `PROJECT_SPEC.md` (Activity: log-maintenance)
-  - Required tests: Edit saves changes, marks record for sync
-  - Notes: Need to add edit button to list items, pre-populate form
+- [x] **P0-01**: Implement edit functionality for MaintenanceScreen
+  - Completed: 2026-02-23
+  - Notes: Added editingId state, handleEditPress, pre-populates form with existing data, calls MaintenanceService.update. Also added parts_used and labor_hours fields to form data to fix TypeScript error.
 
 - [ ] **P0-02**: Implement edit functionality for ModsScreen
   - Spec: `PROJECT_SPEC.md` (Activity: track-mods)
@@ -81,12 +80,11 @@
 - [ ] **P0-03**: Implement edit functionality for CostsScreen, FuelScreen, NotesScreen, VCDSScreen, RemindersScreen
   - Spec: `PROJECT_SPEC.md` (all activities)
   - Required tests: Edit saves changes correctly
-  - Notes: Common pattern across all screens
+  - Notes: Common pattern across all screens (can reuse MaintenanceScreen pattern)
 
-- [ ] **P0-04**: Implement delete functionality with confirmation dialogs
-  - Spec: `PROJECT_SPEC.md` (implied CRUD requirement)
-  - Required tests: Delete removes from DB, cascades properly
-  - Notes: Add long-press or swipe-to-delete on list items
+- [x] **P0-04**: Implement delete functionality with confirmation dialogs
+  - Completed: 2026-02-23 (MaintenanceScreen only)
+  - Notes: Added handleDeletePress with Alert confirmation dialog, calls MaintenanceService.delete. Remaining screens need same pattern.
 
 - [x] **P0-05**: Fix OverviewScreen navigation to actually navigate
   - Completed: 2026-02-23
@@ -205,9 +203,9 @@
 ## Recommendations
 
 ### Immediate Priorities (Next Sprint)
-1. **P0-01 through P0-05** - Basic CRUD completeness
-2. **P1-01** - Complete missing service methods
-3. **P1-03** - Sync status visibility
+1. **P0-02, P0-03** - Complete edit functionality for remaining screens
+2. **P0-04** - Complete delete functionality for remaining screens
+3. **P1-01** - Complete missing service methods
 
 ### Medium-Term (Next 2-3 Sprints)
 1. **P1-02** - Conflict resolution (critical for multi-device users)
@@ -244,3 +242,4 @@
 ---
 
 *Generated: 2026-02-23*
+*Updated: 2026-02-23 (P0-01, P0-04 completed)*

@@ -34,6 +34,8 @@ interface MaintenanceFormData {
   cost: string;
   shop_name: string;
   notes: string;
+  parts_used: string;
+  labor_hours: string;
 }
 
 const initialFormData: MaintenanceFormData = {
@@ -44,6 +46,8 @@ const initialFormData: MaintenanceFormData = {
   cost: '',
   shop_name: '',
   notes: '',
+  parts_used: '',
+  labor_hours: '',
 };
 
 interface MaintenanceScreenProps {
@@ -58,6 +62,7 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<MaintenanceFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, maintenanceData] = await Promise.all([
@@ -109,6 +114,23 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
 
   const handleAddPress = () => {
     setFormData(initialFormData);
+    setEditingId(null);
+    setModalVisible(true);
+  };
+
+  const handleEditPress = (item: Maintenance) => {
+    setFormData({
+      date: item.date || '',
+      mileage: item.mileage?.toString() || '',
+      category: item.category || '',
+      description: item.description || '',
+      cost: item.cost?.toString() || '',
+      shop_name: item.shop_name || '',
+      notes: item.notes || '',
+      parts_used: item.parts_used || '',
+      labor_hours: item.labor_hours?.toString() || '',
+    });
+    setEditingId(item.id);
     setModalVisible(true);
   };
 
@@ -120,7 +142,7 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
 
     setSaving(true);
     try {
-      await MaintenanceService.create({
+      const maintenanceData = {
         vehicle_id: vehicleId,
         date: formData.date || null,
         mileage: formData.mileage ? parseInt(formData.mileage, 10) : null,
@@ -129,7 +151,15 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
         cost: formData.cost ? parseFloat(formData.cost) : null,
         shop_name: formData.shop_name || null,
         notes: formData.notes || null,
-      });
+        parts_used: formData.parts_used || null,
+        labor_hours: formData.labor_hours ? parseFloat(formData.labor_hours) : null,
+      };
+
+      if (editingId !== null) {
+        await MaintenanceService.update(editingId, maintenanceData);
+      } else {
+        await MaintenanceService.create(maintenanceData);
+      }
       setModalVisible(false);
       await loadData();
     } catch (error) {
@@ -137,6 +167,24 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDeletePress = (item: Maintenance) => {
+    Alert.alert(
+      'Delete Maintenance Record',
+      `Are you sure you want to delete "${item.description || 'Maintenance'}" from ${item.date}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await MaintenanceService.delete(item.id);
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   const formatCurrency = (amount: number | null): string => {
@@ -193,11 +241,31 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
       {item.shop_name && (
         <Text style={styles.itemShop}>{item.shop_name}</Text>
       )}
+      {item.parts_used && (
+        <Text style={styles.itemParts}>Parts: {item.parts_used}</Text>
+      )}
+      {item.labor_hours && (
+        <Text style={styles.itemLabor}>Labor: {item.labor_hours} hrs</Text>
+      )}
       <View style={styles.itemFooter}>
         {item.mileage && (
           <Text style={styles.itemMileage}>{item.mileage.toLocaleString()} mi</Text>
         )}
         <Text style={styles.itemCost}>{formatCurrency(item.cost)}</Text>
+      </View>
+      <View style={styles.itemActions}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditPress(item)}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeletePress(item)}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
       </View>
     </Card>
   );
@@ -252,7 +320,9 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Maintenance</Text>
+            <Text style={styles.modalTitle}>
+              {editingId !== null ? 'Edit Maintenance' : 'Add Maintenance'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -324,6 +394,21 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
               value={formData.shop_name}
               onChangeText={(text) => setFormData({ ...formData, shop_name: text })}
               placeholder="Where was the service done?"
+            />
+
+            <Input
+              label="Parts Used"
+              value={formData.parts_used}
+              onChangeText={(text) => setFormData({ ...formData, parts_used: text })}
+              placeholder="List parts used"
+            />
+
+            <Input
+              label="Labor Hours"
+              value={formData.labor_hours}
+              onChangeText={(text) => setFormData({ ...formData, labor_hours: text })}
+              placeholder="Hours spent"
+              keyboardType="decimal-pad"
             />
 
             <Input
@@ -415,6 +500,16 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     marginBottom: 8,
   },
+  itemParts: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  itemLabor: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 8,
+  },
   itemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -427,6 +522,36 @@ const styles = StyleSheet.create({
   itemCost: {
     fontSize: 16,
     color: '#30D158',
+    fontWeight: '600',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   modalContainer: {
