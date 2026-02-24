@@ -1,4 +1,4 @@
-import * as SQLite from 'expo-sqlite';
+﻿import * as SQLite from 'expo-sqlite';
 import {
   Vehicle,
   Maintenance,
@@ -39,8 +39,7 @@ export const initDatabase = async (): Promise<void> => {
       engine TEXT,
       transmission TEXT,
       mileage INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER
     );
 
@@ -56,8 +55,7 @@ export const initDatabase = async (): Promise<void> => {
       cost REAL,
       shop_name TEXT,
       notes TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -73,8 +71,7 @@ export const initDatabase = async (): Promise<void> => {
       cost REAL,
       status TEXT NOT NULL DEFAULT 'planned',
       notes TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -86,8 +83,7 @@ export const initDatabase = async (): Promise<void> => {
       category TEXT,
       amount REAL,
       description TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -99,8 +95,7 @@ export const initDatabase = async (): Promise<void> => {
       title TEXT,
       content TEXT,
       tags TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -116,8 +111,7 @@ export const initDatabase = async (): Promise<void> => {
       detected_date TEXT,
       cleared_date TEXT,
       notes TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -131,8 +125,7 @@ export const initDatabase = async (): Promise<void> => {
       interval_miles INTEGER,
       interval_months INTEGER,
       is_template INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -143,8 +136,7 @@ export const initDatabase = async (): Promise<void> => {
       filename TEXT,
       caption TEXT,
       is_primary INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -159,8 +151,7 @@ export const initDatabase = async (): Promise<void> => {
       total_cost REAL,
       station TEXT,
       notes TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -176,8 +167,7 @@ export const initDatabase = async (): Promise<void> => {
       next_due_date TEXT,
       next_due_mileage INTEGER,
       notes TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -192,8 +182,7 @@ export const initDatabase = async (): Promise<void> => {
       category TEXT,
       notes TEXT,
       filename TEXT,
-      created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -206,8 +195,7 @@ export const initDatabase = async (): Promise<void> => {
       description TEXT,
       document_type TEXT,
       filename TEXT,
-      uploaded_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0,
+      uploaded_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -295,6 +283,8 @@ export const VehicleService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE vehicles SET ${fields.join(', ')} WHERE id = ?`,
@@ -308,6 +298,15 @@ export const VehicleService = {
     await database.runAsync('DELETE FROM vehicles WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Vehicle | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM vehicles WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Vehicle[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -394,6 +393,8 @@ export const MaintenanceService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE maintenance SET ${fields.join(', ')} WHERE id = ?`,
@@ -407,6 +408,15 @@ export const MaintenanceService = {
     await database.runAsync('DELETE FROM maintenance WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Maintenance | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM maintenance WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Maintenance[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -487,6 +497,8 @@ export const ModService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE mods SET ${fields.join(', ')} WHERE id = ?`,
@@ -500,6 +512,15 @@ export const ModService = {
     await database.runAsync('DELETE FROM mods WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Mod | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM mods WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Mod[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -579,6 +600,8 @@ export const CostService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE costs SET ${fields.join(', ')} WHERE id = ?`,
@@ -592,6 +615,15 @@ export const CostService = {
     await database.runAsync('DELETE FROM costs WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Cost | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM costs WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Cost[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -668,6 +700,8 @@ export const NoteService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE notes SET ${fields.join(', ')} WHERE id = ?`,
@@ -681,6 +715,15 @@ export const NoteService = {
     await database.runAsync('DELETE FROM notes WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Note | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM notes WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Note[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -764,6 +807,8 @@ export const VCDSFaultService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE vcds_faults SET ${fields.join(', ')} WHERE id = ?`,
@@ -777,6 +822,15 @@ export const VCDSFaultService = {
     await database.runAsync('DELETE FROM vcds_faults WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<VCDSFault | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM vcds_faults WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<VCDSFault[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -884,6 +938,8 @@ export const GuideService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE guides SET ${fields.join(', ')} WHERE id = ?`,
@@ -897,6 +953,15 @@ export const GuideService = {
     await database.runAsync('DELETE FROM guides WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Guide | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM guides WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Guide[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -1006,6 +1071,8 @@ export const VehiclePhotoService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE vehicle_photos SET ${fields.join(', ')} WHERE id = ?`,
@@ -1031,6 +1098,15 @@ export const VehiclePhotoService = {
     );
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<VehiclePhoto | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM vehicle_photos WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<VehiclePhoto[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -1116,6 +1192,8 @@ export const FuelEntryService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE fuel_entries SET ${fields.join(', ')} WHERE id = ?`,
@@ -1129,6 +1207,15 @@ export const FuelEntryService = {
     await database.runAsync('DELETE FROM fuel_entries WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<FuelEntry | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM fuel_entries WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<FuelEntry[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -1212,6 +1299,8 @@ export const ReminderService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE reminders SET ${fields.join(', ')} WHERE id = ?`,
@@ -1225,6 +1314,15 @@ export const ReminderService = {
     await database.runAsync('DELETE FROM reminders WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Reminder | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM reminders WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Reminder[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -1304,6 +1402,8 @@ export const ReceiptService = {
 
     if (fields.length > 0) {
       fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
       values.push(id);
       await database.runAsync(
         `UPDATE receipts SET ${fields.join(', ')} WHERE id = ?`,
@@ -1317,6 +1417,15 @@ export const ReceiptService = {
     await database.runAsync('DELETE FROM receipts WHERE id = ?', [id]);
   },
 
+  
+  async getByRemoteId(remoteId: number): Promise<Receipt | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM receipts WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Receipt[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(
@@ -1385,6 +1494,40 @@ export const DocumentService = {
     await database.runAsync('DELETE FROM documents WHERE id = ?', [id]);
   },
 
+
+  async update(id: number, doc: Partial<Omit<Document, 'id' | 'uploaded_at'>>): Promise<void> {
+    const database = await getDatabase();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    Object.entries(doc).forEach(([key, value]) => {
+      if (value !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(value);
+      }
+    });
+
+    if (fields.length > 0) {
+      fields.push('synced = 0');
+      fields.push('updated_at = ?');
+      values.push(getCurrentTimestamp());
+      values.push(id);
+      await database.runAsync(
+        `UPDATE documents SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      );
+    }
+  },
+
+  
+  async getByRemoteId(remoteId: number): Promise<Document | null> {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<Record<string, unknown>>(
+      'SELECT * FROM documents WHERE remote_id = ?',
+      [remoteId]
+    );
+    return row ? mapSynced(row) : null;
+  },
   async getUnsynced(): Promise<Document[]> {
     const database = await getDatabase();
     const rows = await database.getAllAsync<Record<string, unknown>>(

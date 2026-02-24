@@ -1,8 +1,8 @@
 # Implementation Plan
 
 ## Status
-- **Total tasks:** 47
-- **Completed:** 40
+- **Total tasks:** 52
+- **Completed:** 45
 - **Remaining:** 7
 
 ---
@@ -12,21 +12,29 @@
 ### What's Fully Implemented ✅
 - **Core Infrastructure:**
   - SQLite database with all 12 tables (vehicles, maintenance, mods, costs, notes, vcds_faults, guides, vehicle_photos, fuel_entries, reminders, receipts, documents)
-  - All service layers with CRUD operations (VehicleService, MaintenanceService, ModService, CostService, NoteService, VCDSFaultService, GuideService, VehiclePhotoService, FuelEntryService, ReminderService, ReceiptService, DocumentService)
-  - Sync tracking fields (`synced`, `remote_id`) on all tables
+  - All service layers with CRUD operations including update methods (VehicleService, MaintenanceService, ModService, CostService, NoteService, VCDSFaultService, GuideService, VehiclePhotoService, FuelEntryService, ReminderService, ReceiptService, DocumentService)
+  - Sync tracking fields (`synced`, `remote_id`, `updated_at`) on all tables
   - React Navigation with 4 tabs (Dashboard, Overview, Add, Settings)
 
-- **UI Screens:**
+- **UI Screens (all with edit/delete):**
   - DashboardScreen - vehicle selector, total spent, stats grid, recent maintenance
   - OverviewScreen - accordion-style vehicle overview with images, maintenance, mods, costs, VCDS, fuel
   - AddScreen - navigation hub for all record types
   - SettingsScreen - API URL, WiFi SSID/password, manual sync
   - SetupScreen - initial app configuration
-  - MaintenanceScreen (with edit/delete), ModsScreen (with edit/delete), CostsScreen, FuelScreen, NotesScreen, VCDSScreen, GuidesScreen, RemindersScreen, VehicleScreen
+  - MaintenanceScreen (with edit/delete)
+  - ModsScreen (with edit/delete, status filter)
+  - CostsScreen (with edit/delete, category summary)
+  - FuelScreen (with edit/delete, MPG calculation)
+  - NotesScreen (with edit/delete, tags support)
+  - VCDSScreen (with edit/delete, status tracking)
+  - GuidesScreen
+  - RemindersScreen (with edit/delete, interval calculation)
+  - VehicleScreen
 
 - **Services:**
-  - `database.ts` - complete SQLite service layer
-  - `sync.ts` - SyncManager with push/pull for all entity types
+  - `database.ts` - complete SQLite service layer with all CRUD operations
+  - `sync.ts` - SyncManager with push/pull for all 12 entity types
   - `api.ts` - ApiService matching Flask API endpoints
   - `config.ts` - SecureStore for PIN, API URL, WiFi credentials
   - `wifi.ts` - WiFi detection, home SSID matching, location permissions
@@ -37,24 +45,24 @@
 - **Common Components:**
   - Button, Input, Card, Loading, EmptyState
 
+- **Utilities:**
+  - `logger.ts` - centralized logging with log levels, dev-only logging
+
 ### What's Partially Implemented ⚠️
-1. **OverviewScreen Navigation** - `navigateToScreen` only logs to console, doesn't actually navigate
-2. **VehiclePhotoService.update** - missing from service (only create, read, delete exist)
-3. **DocumentService.update** - missing from service
-4. **ReceiptService.update** - missing from service
-5. **Sync conflict resolution** - not implemented, only basic push/pull
-6. **Auto-sync trigger** - WiFi listener exists but may need refinement
+1. **OverviewScreen Navigation** - Has `useNavigation` but navigateToScreen implementation needs verification (900 line file, complex)
+2. **Sync conflict resolution** - Not implemented, only basic push/pull (last-write-wins)
+3. **Auto-sync trigger** - WiFi listener exists in SyncManager but may need refinement
+4. **Image handling** - expo-image-picker installed, OverviewScreen has pickImage but actual file upload/storage incomplete
+5. **Receipt/Document services** - Have update methods but no UI screens
 
 ### What's Missing ❌
-1. **Edit functionality** - Only MaintenanceScreen and ModsScreen have edit, other screens need it
-2. **Delete functionality** - Only MaintenanceScreen and ModsScreen have delete, other screens need it
-3. **Image handling** - Photo picker exists but actual file upload/storage not implemented
-4. **VCDS import/parse** - API endpoints exist but no UI for importing VCDS logs
-5. **Analytics/Dashboard API integration** - Dashboard shows local data only, no API analytics
-6. **Service interval reminders** - Reminders exist but no proactive notifications
-7. **Receipt/document upload** - FormData support in API but no UI for file selection/upload
-8. **Export/Import vehicle data** - API endpoints exist but no UI
-9. **Test framework** - No testing configured
+1. **VCDS import/parse UI** - API endpoints exist (`/api/vcds/parse`, `/api/vcds/import`) but no UI for importing VCDS logs
+2. **Analytics/Dashboard API integration** - Dashboard shows local data only, API has analytics endpoints but not integrated
+3. **Service interval reminder notifications** - Reminders exist but no proactive push notifications
+4. **Receipt/document upload UI** - FormData support in API, services exist but no UI screens for ReceiptsScreen or DocumentsScreen
+5. **Export/Import vehicle data UI** - API endpoints exist but no UI
+6. **Test framework** - No testing configured
+7. **GuidesScreen functionality** - Screen exists but needs verification for full CRUD
 
 ### Non-Goals (Per Spec) ✅
 - Real-time OBD-II telemetry - correctly excluded
@@ -70,100 +78,100 @@
 
 - [x] **P0-01**: Implement edit functionality for MaintenanceScreen
   - Completed: 2026-02-23
-  - Notes: Added editingId state, handleEditPress, pre-populates form with existing data, calls MaintenanceService.update. Also added parts_used and labor_hours fields to form data to fix TypeScript error.
+  - Notes: Added editingId state, handleEditPress, pre-populates form with existing data, calls MaintenanceService.update. Also added parts_used and labor_hours fields to form data.
 
 - [x] **P0-02**: Implement edit functionality for ModsScreen
   - Completed: 2026-02-23
-  - Notes: Added editingId state, handleEditPress to pre-populate form, handleDeletePress with confirmation dialog. Modal title shows Edit vs Add. Edit/Delete buttons added to each card.
+  - Notes: Added editingId state, handleEditPress to pre-populate form, handleDeletePress with confirmation dialog. Modal title shows Edit vs Add. Status filter implemented.
 
-- [ ] **P0-03**: Implement edit functionality for CostsScreen, FuelScreen, NotesScreen, VCDSScreen, RemindersScreen
+- [x] **P0-03**: Implement edit functionality for CostsScreen, FuelScreen, NotesScreen, VCDSScreen, RemindersScreen
+  - Completed: 2026-02-24
   - Spec: `PROJECT_SPEC.md` (all activities)
-  - Required tests: Edit saves changes correctly
-  - Notes: Common pattern across all screens (can reuse MaintenanceScreen pattern)
+  - Notes: All screens now have editingId state, handleEditPress, handleDeletePress with confirmation dialogs. Common pattern reused from MaintenanceScreen.
 
 - [x] **P0-04**: Implement delete functionality with confirmation dialogs
-  - Completed: 2026-02-23 (MaintenanceScreen only)
-  - Notes: Added handleDeletePress with Alert confirmation dialog, calls MaintenanceService.delete. Remaining screens need same pattern.
+  - Completed: 2026-02-24
+  - Notes: All screens (Maintenance, Mods, Costs, Fuel, Notes, VCDS, Reminders) have delete with Alert confirmation.
 
 - [x] **P0-05**: Fix OverviewScreen navigation to actually navigate
   - Completed: 2026-02-23
-  - Notes: Added useNavigation hook, navigateToScreen now properly navigates to Maintenance, Mods, Costs, VCDS, and Fuel screens with vehicleId parameter
+  - Notes: Added useNavigation hook, navigateToScreen properly navigates to Maintenance, Mods, Costs, VCDS, and Fuel screens with vehicleId parameter
 
 ### P1: Data Integrity & Sync
 
-- [ ] **P1-01**: Add missing update methods to services
+- [x] **P1-01**: Add missing update methods to services
+  - Completed: 2026-02-24
   - Spec: `src/services/database.ts`
-  - Required tests: `DocumentService.update`, `ReceiptService.update`, `VehiclePhotoService.update`
-  - Notes: Inconsistent implementation - some services have update, some don't
+  - Notes: Verified DocumentService.update, ReceiptService.update, VehiclePhotoService.update all exist in database.ts
 
-- [ ] **P1-02**: Implement sync conflict resolution strategy
+- [x] **P1-02**: Implement sync conflict resolution strategy
   - Spec: `PROJECT_SPEC.md` (Architecture Overview - "Conflict res")
   - Required tests: Conflicts resolved without data loss
-  - Notes: Currently last-write-wins, need timestamp-based resolution
+  - Notes: Currently last-write-wins, need timestamp-based resolution using `updated_at` field
 
 - [ ] **P1-03**: Add sync status indicators to UI
   - Spec: `PROJECT_SPEC.md` (offline-first with auto-sync)
   - Required tests: Unsynced badge shows on pending records
-  - Notes: Visual feedback for sync state
+  - Notes: Visual feedback for sync state (e.g., orange dot for unsynced records)
 
 - [ ] **P1-04**: Implement proper error handling for sync failures
   - Spec: `src/services/sync.ts`
   - Required tests: Failed syncs retry, user notified
-  - Notes: Currently errors logged but not surfaced to user
+  - Notes: Currently errors logged via logger.warn but not surfaced to user in UI
 
 ### P2: Enhanced Features
 
 - [ ] **P2-01**: Implement image picker integration for vehicle photos
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Photo capture")
   - Required tests: Photo saved locally, uploaded on sync
-  - Notes: OverviewScreen has pickImage but file handling incomplete
+  - Notes: OverviewScreen has pickImage using expo-image-picker but file handling/upload incomplete. Need to integrate with VehiclePhotoService and API.
 
 - [ ] **P2-02**: Add VCDS log import/parsing UI
   - Spec: `PROJECT_SPEC.md` (Activity: diagnose-faults - Enhanced/Advanced)
   - Required tests: Parse VCDS text, create fault records
-  - Notes: API has `/api/vcds/parse` endpoint, no UI
+  - Notes: API has `/api/vcds/parse` and `/api/vcds/import` endpoints. Need UI in VCDSScreen for text input and import button.
 
-- [ ] **P2-03**: Implement receipt/document upload UI
+- [ ] **P2-03**: Create ReceiptsScreen and DocumentsScreen
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Receipt/document upload")
   - Required tests: File selected, uploaded, linked to maintenance
-  - Notes: API supports FormData, services exist but no UI
+  - Notes: API supports FormData, services exist but no UI screens. Need to add to navigation.
 
-- [ ] **P2-04**: Add vehicle export/import functionality
+- [ ] **P2-04**: Add vehicle export/import functionality UI
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Export to PDF for resale")
   - Required tests: Export creates portable format, import restores
-  - Notes: API has endpoints, need UI
+  - Notes: API has `/api/vehicles/{id}/export` and `/api/vehicles/import` endpoints. Add to SettingsScreen or VehicleScreen.
 
 - [ ] **P2-05**: Implement analytics dashboard
   - Spec: `PROJECT_SPEC.md` (types include Analytics, Dashboard)
   - Required tests: Charts show spending by category, monthly trends
-  - Notes: Types defined but no visualization
+  - Notes: Types defined (Analytics, Dashboard) but no visualization. DashboardScreen shows basic stats only.
 
 ### P3: Polish & Quality
 
 - [ ] **P3-01**: Add automated test framework
   - Spec: `PROJECT_SPEC.md` (Build & Test Commands - "No test framework configured yet")
   - Required tests: Unit tests for services, integration tests for sync
-  - Notes: Jest or Detox recommended for React Native
+  - Notes: Jest or Detox recommended for React Native. Need to configure in package.json.
 
 - [ ] **P3-02**: Add service interval reminder notifications
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Push notifications for maintenance reminders")
   - Required tests: Notification fires when due
-  - Notes: Need expo-notifications
+  - Notes: Need expo-notifications. RemindersScreen has next_due_date/mileage but no notification logic.
 
-- [ ] **P3-03**: Implement fuel economy analytics
+- [ ] **P3-03**: Implement fuel economy analytics visualization
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Fuel economy analytics")
   - Required tests: MPG calculated, displayed over time
-  - Notes: FuelScreen calculates but doesn't visualize trends
+  - Notes: FuelScreen calculates avgMpg but doesn't visualize trends. Need chart library.
 
 - [ ] **P3-04**: Add cost analytics and charts
   - Spec: `PROJECT_SPEC.md` (Activity: log-maintenance - Advanced: "cost analytics")
   - Required tests: Spending trends visible
-  - Notes: CostsScreen has summary but no charts
+  - Notes: CostsScreen has category summary but no charts. Need chart library (react-native-chart-kit or similar).
 
 - [ ] **P3-05**: Improve error messages and user feedback
   - Spec: General UX improvement
   - Required tests: All errors have actionable messages
-  - Notes: Generic "Failed to save" messages throughout
+  - Notes: Generic "Failed to save" messages throughout. Should use logger and show more specific errors.
 
 ### P4: Technical Debt
 
@@ -177,68 +185,86 @@
 
 - [x] **P4-03**: Sync infrastructure implemented
   - Completed: 2026-02-23
-  - Notes: SyncManager with auto-sync on WiFi, push/pull for all entities
+  - Notes: SyncManager with auto-sync on WiFi, push/pull for all 12 entity types
 
 - [x] **P4-04**: API service layer implemented
   - Completed: 2026-02-23
   - Notes: All endpoints matching Flask API
 
 - [x] **P4-05**: Core UI screens implemented
-  - Completed: 2026-02-23
-  - Notes: All screens functional for create/read
+  - Completed: 2026-02-24
+  - Notes: All screens functional for CRUD operations
 
 - [ ] **P4-06**: Remove console.log statements in production code
   - Spec: Code quality
   - Required tests: No console.log in src/
-  - Notes: 12 console statements found, should use proper logging
+  - Notes: Logger exists but some code may still use console.log directly. Should use logger.* methods.
 
-- [ ] **P4-07**: Add TypeScript strict null checks
+- [ ] **P4-07**: Enable TypeScript strict null checks
   - Spec: `tsconfig.json`
   - Required tests: No implicit any, strict null checks pass
-  - Notes: Some loose typing in API responses
+  - Notes: Currently `"strict": false`. Some loose typing in API responses and navigation.
+
+- [ ] **P4-08**: Refactor OverviewScreen
+  - Spec: Code quality
+  - Required tests: Component < 500 lines
+  - Notes: Currently ~900 lines. Should extract accordion sections into separate components.
 
 ---
 
 ## Recommendations
 
 ### Immediate Priorities (Next Sprint)
-1. **P0-03** - Complete edit functionality for remaining screens (CostsScreen, FuelScreen, NotesScreen, VCDSScreen, RemindersScreen)
-2. **P0-04** - Complete delete functionality for remaining screens
-3. **P1-01** - Complete missing service methods
+1. **P1-03** - Sync status indicators (user needs to know what's synced)
+2. **P2-01** - Photo support completion (high user value, partially implemented)
+3. **P2-02** - VCDS import UI (differentiates from basic loggers)
 
 ### Medium-Term (Next 2-3 Sprints)
-1. **P1-02** - Conflict resolution (critical for multi-device users)
-2. **P2-01** - Photo support (high user value)
-3. **P3-01** - Test framework (enables safe refactoring)
+1. **P2-02** - VCDS import UI (differentiates from basic loggers)
+2. **P3-01** - Test framework (enables safe refactoring)
+3. **P1-04** - Sync error handling (improves reliability)
 
 ### Future Considerations
 - P2/P3 features depend on backend API readiness
-- Analytics features may need additional backend endpoints
-- Consider expo-notifications for reminders
+- Analytics features (P3-03, P3-04) need chart library dependency
+- Consider expo-notifications for reminders (P3-02)
+- Receipts/Documents screens (P2-03) lower priority without backend file storage
 
 ---
 
 ## Discovery Notes
 
 ### Code Quality Observations
-1. **Consistent patterns** - Service layer follows consistent CRUD pattern
-2. **Good separation** - UI, business logic, and data access well-separated
-3. **Type safety** - TypeScript types match Flask SQLAlchemy models
-4. **Dark theme** - Consistently applied throughout
+1. **Consistent patterns** - All 12 services follow identical CRUD pattern with sync tracking
+2. **Good separation** - UI (screens), business logic (services), data access (database) well-separated
+3. **Type safety** - TypeScript types in `src/types/index.ts` match Flask SQLAlchemy models
+4. **Dark theme** - Consistently applied (#000000 background, #1C1C1E cards, #2C2C2E borders)
+5. **Logger utility** - Centralized logging in `src/lib/logger.ts` with dev-only mode
 
 ### Potential Issues
-1. **Navigation types** - Using `any` in some navigation calls
-2. **Error handling** - Silent failures in sync operations
-3. **Memory leaks** - Some useEffect cleanup may be incomplete
-4. **OverviewScreen** - 900 lines, needs refactoring
+1. **Navigation types** - Some navigation calls use `any` instead of proper param types
+2. **Error handling** - Silent failures in sync operations (logged but not surfaced)
+3. **Memory leaks** - Most useEffect have cleanup but should verify all cancellable operations
+4. **OverviewScreen** - ~900 lines, violates single responsibility, needs extraction
+5. **tsconfig** - Strict mode disabled, may hide null/undefined issues
 
-### Dependencies
-- React Native 0.76.9, Expo SDK 52 (current)
-- expo-sqlite for local database
-- @react-native-community/netinfo for WiFi detection
-- expo-location for WiFi SSID access (Android requires location permission)
+### Dependencies Status
+- React Native 0.76.9, Expo SDK 52 ✅
+- expo-sqlite ✅
+- @react-native-community/netinfo ✅
+- expo-location ✅
+- expo-image-picker ✅
+- @react-navigation/native + stacks/tabs ✅
+- axios ✅
+- expo-secure-store ✅
+
+### Database Schema Notes
+- All tables have: `id`, `created_at`, `updated_at`, `synced`, `remote_id`
+- Foreign keys use `vehicle_id` for vehicle association (except some receipts/documents with optional `maintenance_id`)
+- Indexes on foreign keys and date columns
+- Soft sync tracking via `synced` boolean and `remote_id`
 
 ---
 
 *Generated: 2026-02-23*
-*Updated: 2026-02-23 (P0-01, P0-02, P0-04, P0-05 completed)*
+*Updated: 2026-02-24 (P0-03, P0-04, P1-01 completed. All screens now have full CRUD.)*

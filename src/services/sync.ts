@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   VehicleService,
   MaintenanceService,
@@ -49,6 +49,11 @@ export interface SyncResult {
     receipts: number;
     documents: number;
   };
+  conflicts: {
+    resolved: number;
+    localWins: number;
+    remoteWins: number;
+  };
   errors: string[];
   timestamp: string;
 }
@@ -69,12 +74,43 @@ const setLastSyncTimestamp = async (timestamp: string): Promise<void> => {
   }
 };
 
-const getRemoteIdMap = (remoteData: { id: number }[]): Map<number, number> => {
-  const map = new Map<number, number>();
-  remoteData.forEach(item => {
-    map.set(item.id, item.id);
-  });
-  return map;
+/**
+ * Compare two timestamps and return which is newer.
+ * Returns: 'local' if local is newer or equal, 'remote' if remote is newer
+ */
+const compareTimestamps = (localUpdatedAt: string | null | undefined, remoteUpdatedAt: string | null | undefined): 'local' | 'remote' => {
+  // If no local timestamp, remote wins (it's new data)
+  if (!localUpdatedAt) return 'remote';
+  // If no remote timestamp, keep local
+  if (!remoteUpdatedAt) return 'local';
+  
+  try {
+    const localTime = new Date(localUpdatedAt).getTime();
+    const remoteTime = new Date(remoteUpdatedAt).getTime();
+    
+    // Local wins on tie (prefer existing data)
+    return remoteTime > localTime ? 'remote' : 'local';
+  } catch {
+    // If parsing fails, prefer local
+    return 'local';
+  }
+};
+
+/**
+ * Resolve sync conflict using timestamp-based strategy.
+ * Returns true if remote should overwrite local.
+ */
+const resolveConflict = (
+  localRecord: Record<string, unknown> | null,
+  remoteRecord: Record<string, unknown>
+): boolean => {
+  if (!localRecord) return true; // No local record, accept remote
+  
+  const localUpdatedAt = localRecord.updated_at as string | null | undefined;
+  const remoteUpdatedAt = remoteRecord.updated_at as string | null | undefined;
+  
+  const winner = compareTimestamps(localUpdatedAt, remoteUpdatedAt);
+  return winner === 'remote';
 };
 
 class SyncManager {
@@ -125,6 +161,7 @@ class SyncManager {
         success: false,
         pushed: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
         pulled: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
+        conflicts: { resolved: 0, localWins: 0, remoteWins: 0 },
         errors: ['Sync already in progress'],
         timestamp: new Date().toISOString(),
       };
@@ -135,6 +172,7 @@ class SyncManager {
       success: true,
       pushed: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
       pulled: { vehicles: 0, maintenance: 0, mods: 0, costs: 0, notes: 0, vcds: 0, guides: 0, photos: 0, fuel: 0, reminders: 0, receipts: 0, documents: 0 },
+      conflicts: { resolved: 0, localWins: 0, remoteWins: 0 },
       errors: [],
       timestamp: new Date().toISOString(),
     };
@@ -166,6 +204,7 @@ class SyncManager {
 
   async syncVehicles(result: SyncResult): Promise<void> {
     try {
+      // Push: Send local unsynced records to remote
       const unsynced = await VehicleService.getUnsynced();
       for (const vehicle of unsynced) {
         try {
@@ -187,10 +226,13 @@ class SyncManager {
         }
       }
 
+      // Pull: Fetch remote records with conflict resolution
       const remoteVehicles = await apiService.vehicles.getAll();
       for (const remote of remoteVehicles) {
-        const existing = await VehicleService.getById(remote.id);
+        const existing = await VehicleService.getByRemoteId(remote.id);
+        
         if (!existing) {
+          // No local record with this remote_id, create new
           await VehicleService.create({
             name: remote.name,
             make: remote.make,
@@ -204,6 +246,32 @@ class SyncManager {
           });
           await VehicleService.markSynced(remote.id, remote.id);
           result.pulled.vehicles++;
+        } else {
+          // Conflict: compare timestamps
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            // Remote is newer, update local
+            await VehicleService.update(existing.id, {
+              name: remote.name,
+              make: remote.make,
+              model: remote.model,
+              reg: remote.reg,
+              vin: remote.vin,
+              year: remote.year,
+              engine: remote.engine,
+              transmission: remote.transmission,
+              mileage: remote.mileage,
+            });
+            await VehicleService.markSynced(existing.id, remote.id);
+            result.pulled.vehicles++;
+            result.conflicts.remoteWins++;
+          } else {
+            // Local is newer, keep local but mark as synced
+            await VehicleService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -213,6 +281,7 @@ class SyncManager {
 
   async syncMaintenance(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await MaintenanceService.getUnsynced();
       for (const item of unsynced) {
         try {
@@ -235,9 +304,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteMaintenance = await apiService.maintenance.getAll();
       for (const remote of remoteMaintenance) {
-        const existing = await MaintenanceService.getById(remote.id);
+        const existing = await MaintenanceService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await MaintenanceService.create({
             vehicle_id: remote.vehicle_id,
@@ -253,6 +324,30 @@ class SyncManager {
           });
           await MaintenanceService.markSynced(remote.id, remote.id);
           result.pulled.maintenance++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await MaintenanceService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              date: remote.date,
+              mileage: remote.mileage,
+              category: remote.category,
+              description: remote.description,
+              parts_used: remote.parts_used,
+              labor_hours: remote.labor_hours,
+              cost: remote.cost,
+              shop_name: remote.shop_name,
+              notes: remote.notes,
+            });
+            await MaintenanceService.markSynced(existing.id, remote.id);
+            result.pulled.maintenance++;
+            result.conflicts.remoteWins++;
+          } else {
+            await MaintenanceService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -262,6 +357,7 @@ class SyncManager {
 
   async syncMods(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await ModService.getUnsynced();
       for (const mod of unsynced) {
         try {
@@ -283,9 +379,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteMods = await apiService.mods.getAll();
       for (const remote of remoteMods) {
-        const existing = await ModService.getById(remote.id);
+        const existing = await ModService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await ModService.create({
             vehicle_id: remote.vehicle_id,
@@ -300,6 +398,29 @@ class SyncManager {
           });
           await ModService.markSynced(remote.id, remote.id);
           result.pulled.mods++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await ModService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              date: remote.date,
+              mileage: remote.mileage,
+              category: remote.category,
+              description: remote.description,
+              parts: remote.parts,
+              cost: remote.cost,
+              status: remote.status,
+              notes: remote.notes,
+            });
+            await ModService.markSynced(existing.id, remote.id);
+            result.pulled.mods++;
+            result.conflicts.remoteWins++;
+          } else {
+            await ModService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -309,6 +430,7 @@ class SyncManager {
 
   async syncCosts(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await CostService.getUnsynced();
       for (const cost of unsynced) {
         try {
@@ -326,9 +448,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteCosts = await apiService.costs.getAll();
       for (const remote of remoteCosts) {
-        const existing = await CostService.getById(remote.id);
+        const existing = await CostService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await CostService.create({
             vehicle_id: remote.vehicle_id,
@@ -339,6 +463,25 @@ class SyncManager {
           });
           await CostService.markSynced(remote.id, remote.id);
           result.pulled.costs++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await CostService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              date: remote.date,
+              category: remote.category,
+              amount: remote.amount,
+              description: remote.description,
+            });
+            await CostService.markSynced(existing.id, remote.id);
+            result.pulled.costs++;
+            result.conflicts.remoteWins++;
+          } else {
+            await CostService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -348,6 +491,7 @@ class SyncManager {
 
   async syncNotes(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await NoteService.getUnsynced();
       for (const note of unsynced) {
         try {
@@ -365,9 +509,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteNotes = await apiService.notes.getAll();
       for (const remote of remoteNotes) {
-        const existing = await NoteService.getById(remote.id);
+        const existing = await NoteService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await NoteService.create({
             vehicle_id: remote.vehicle_id,
@@ -378,6 +524,25 @@ class SyncManager {
           });
           await NoteService.markSynced(remote.id, remote.id);
           result.pulled.notes++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await NoteService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              date: remote.date,
+              title: remote.title,
+              content: remote.content,
+              tags: remote.tags,
+            });
+            await NoteService.markSynced(existing.id, remote.id);
+            result.pulled.notes++;
+            result.conflicts.remoteWins++;
+          } else {
+            await NoteService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -387,6 +552,7 @@ class SyncManager {
 
   async syncVCDS(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await VCDSFaultService.getUnsynced();
       for (const fault of unsynced) {
         try {
@@ -408,9 +574,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteFaults = await apiService.vcds.getAll();
       for (const remote of remoteFaults) {
-        const existing = await VCDSFaultService.getById(remote.id);
+        const existing = await VCDSFaultService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await VCDSFaultService.create({
             vehicle_id: remote.vehicle_id,
@@ -425,6 +593,29 @@ class SyncManager {
           });
           await VCDSFaultService.markSynced(remote.id, remote.id);
           result.pulled.vcds++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await VCDSFaultService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              address: remote.address,
+              component: remote.component,
+              fault_code: remote.fault_code,
+              description: remote.description,
+              status: remote.status,
+              detected_date: remote.detected_date,
+              cleared_date: remote.cleared_date,
+              notes: remote.notes,
+            });
+            await VCDSFaultService.markSynced(existing.id, remote.id);
+            result.pulled.vcds++;
+            result.conflicts.remoteWins++;
+          } else {
+            await VCDSFaultService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -434,6 +625,7 @@ class SyncManager {
 
   async syncGuides(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await GuideService.getUnsynced();
       for (const guide of unsynced) {
         try {
@@ -453,9 +645,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteGuides = await apiService.guides.getAll();
       for (const remote of remoteGuides) {
-        const existing = await GuideService.getById(remote.id);
+        const existing = await GuideService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await GuideService.create({
             vehicle_id: remote.vehicle_id,
@@ -468,6 +662,27 @@ class SyncManager {
           });
           await GuideService.markSynced(remote.id, remote.id);
           result.pulled.guides++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await GuideService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              title: remote.title,
+              category: remote.category,
+              content: remote.content,
+              interval_miles: remote.interval_miles,
+              interval_months: remote.interval_months,
+              is_template: remote.is_template,
+            });
+            await GuideService.markSynced(existing.id, remote.id);
+            result.pulled.guides++;
+            result.conflicts.remoteWins++;
+          } else {
+            await GuideService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -477,6 +692,7 @@ class SyncManager {
 
   async syncPhotos(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await VehiclePhotoService.getUnsynced();
       for (const photo of unsynced) {
         try {
@@ -494,9 +710,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remotePhotos = await apiService.photos.getAll();
       for (const remote of remotePhotos) {
-        const existing = await VehiclePhotoService.getById(remote.id);
+        const existing = await VehiclePhotoService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await VehiclePhotoService.create({
             vehicle_id: remote.vehicle_id,
@@ -506,6 +724,24 @@ class SyncManager {
           });
           await VehiclePhotoService.markSynced(remote.id, remote.id);
           result.pulled.photos++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await VehiclePhotoService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              filename: remote.filename,
+              caption: remote.caption,
+              is_primary: remote.is_primary,
+            });
+            await VehiclePhotoService.markSynced(existing.id, remote.id);
+            result.pulled.photos++;
+            result.conflicts.remoteWins++;
+          } else {
+            await VehiclePhotoService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -515,6 +751,7 @@ class SyncManager {
 
   async syncFuel(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await FuelEntryService.getUnsynced();
       for (const entry of unsynced) {
         try {
@@ -535,9 +772,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteFuel = await apiService.fuel.getAll();
       for (const remote of remoteFuel) {
-        const existing = await FuelEntryService.getById(remote.id);
+        const existing = await FuelEntryService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await FuelEntryService.create({
             vehicle_id: remote.vehicle_id,
@@ -551,6 +790,28 @@ class SyncManager {
           });
           await FuelEntryService.markSynced(remote.id, remote.id);
           result.pulled.fuel++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await FuelEntryService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              date: remote.date,
+              mileage: remote.mileage,
+              gallons: remote.gallons,
+              price_per_gallon: remote.price_per_gallon,
+              total_cost: remote.total_cost,
+              station: remote.station,
+              notes: remote.notes,
+            });
+            await FuelEntryService.markSynced(existing.id, remote.id);
+            result.pulled.fuel++;
+            result.conflicts.remoteWins++;
+          } else {
+            await FuelEntryService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -560,6 +821,7 @@ class SyncManager {
 
   async syncReminders(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await ReminderService.getUnsynced();
       for (const reminder of unsynced) {
         try {
@@ -581,9 +843,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteReminders = await apiService.reminders.getAll();
       for (const remote of remoteReminders) {
-        const existing = await ReminderService.getById(remote.id);
+        const existing = await ReminderService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await ReminderService.create({
             vehicle_id: remote.vehicle_id,
@@ -598,6 +862,29 @@ class SyncManager {
           });
           await ReminderService.markSynced(remote.id, remote.id);
           result.pulled.reminders++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await ReminderService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              type: remote.type,
+              interval_miles: remote.interval_miles,
+              interval_months: remote.interval_months,
+              last_service_date: remote.last_service_date,
+              last_service_mileage: remote.last_service_mileage,
+              next_due_date: remote.next_due_date,
+              next_due_mileage: remote.next_due_mileage,
+              notes: remote.notes,
+            });
+            await ReminderService.markSynced(existing.id, remote.id);
+            result.pulled.reminders++;
+            result.conflicts.remoteWins++;
+          } else {
+            await ReminderService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -607,6 +894,7 @@ class SyncManager {
 
   async syncReceipts(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await ReceiptService.getUnsynced();
       for (const receipt of unsynced) {
         try {
@@ -626,9 +914,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteReceipts = await apiService.receipts.getAll();
       for (const remote of remoteReceipts) {
-        const existing = await ReceiptService.getById(remote.id);
+        const existing = await ReceiptService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await ReceiptService.create({
             vehicle_id: remote.vehicle_id,
@@ -642,6 +932,28 @@ class SyncManager {
           });
           await ReceiptService.markSynced(remote.id, remote.id);
           result.pulled.receipts++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await ReceiptService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              maintenance_id: remote.maintenance_id,
+              date: remote.date,
+              vendor: remote.vendor,
+              amount: remote.amount,
+              category: remote.category,
+              notes: remote.notes,
+              filename: remote.filename,
+            });
+            await ReceiptService.markSynced(existing.id, remote.id);
+            result.pulled.receipts++;
+            result.conflicts.remoteWins++;
+          } else {
+            await ReceiptService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
@@ -651,6 +963,7 @@ class SyncManager {
 
   async syncDocuments(result: SyncResult): Promise<void> {
     try {
+      // Push
       const unsynced = await DocumentService.getUnsynced();
       for (const doc of unsynced) {
         try {
@@ -668,9 +981,11 @@ class SyncManager {
         }
       }
 
+      // Pull with conflict resolution
       const remoteDocs = await apiService.documents.getAll();
       for (const remote of remoteDocs) {
-        const existing = await DocumentService.getById(remote.id);
+        const existing = await DocumentService.getByRemoteId(remote.id);
+        
         if (!existing) {
           await DocumentService.create({
             vehicle_id: remote.vehicle_id,
@@ -682,6 +997,26 @@ class SyncManager {
           });
           await DocumentService.markSynced(remote.id, remote.id);
           result.pulled.documents++;
+        } else {
+          result.conflicts.resolved++;
+          const shouldUpdate = resolveConflict(existing, remote);
+          
+          if (shouldUpdate) {
+            await DocumentService.update(existing.id, {
+              vehicle_id: remote.vehicle_id,
+              maintenance_id: remote.maintenance_id,
+              title: remote.title,
+              description: remote.description,
+              document_type: remote.document_type,
+              filename: remote.filename,
+            });
+            await DocumentService.markSynced(existing.id, remote.id);
+            result.pulled.documents++;
+            result.conflicts.remoteWins++;
+          } else {
+            await DocumentService.markSynced(existing.id, remote.id);
+            result.conflicts.localWins++;
+          }
         }
       }
     } catch (error) {
