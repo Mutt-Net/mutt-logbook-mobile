@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { CostService, VehicleService } from '../services/database';
-import { Cost, Vehicle } from '../types';
-import { Card, Input, Loading, EmptyState } from '../components/common';
+import { Cost, Vehicle, WithSyncStatus } from '../types';
+import { isUnsynced } from '../lib/syncUtils';
+import { Card, Input, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 
 const COST_CATEGORIES = [
   { value: 'maintenance', label: 'Maintenance' },
@@ -244,6 +245,7 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
   const renderItem = ({ item }: { item: Cost }) => (
     <Card>
       <View style={styles.itemHeader}>
+        <SyncStatusBadge isSynced={!isUnsynced(item)} size="small" />
         <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
           <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
         </View>
@@ -620,3 +622,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+

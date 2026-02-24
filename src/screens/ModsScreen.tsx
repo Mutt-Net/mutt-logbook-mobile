@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { ModService, VehicleService } from '../services/database';
-import { Mod, Vehicle } from '../types';
-import { Card, Input, Loading, EmptyState } from '../components/common';
+import { Mod, Vehicle, WithSyncStatus } from '../types';
+import { isUnsynced } from '../lib/syncUtils';
+import { Card, Input, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 
 const MOD_CATEGORIES = [
   { value: 'engine', label: 'Engine' },
@@ -269,6 +270,7 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
     <Card>
       <View style={styles.itemHeader}>
         <View style={styles.itemHeaderLeft}>
+          <SyncStatusBadge isSynced={!isUnsynced(item)} size="small" />
           <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
             <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
           </View>
@@ -733,3 +735,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+

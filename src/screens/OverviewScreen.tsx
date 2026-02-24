@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,7 @@ import {
   VehiclePhoto,
   FuelEntry,
 } from '../types';
-import { Card, Button, Loading, EmptyState } from '../components/common';
+import { Card, Button, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -315,7 +315,7 @@ export default function OverviewScreen() {
         </View>
       </View>
       <Text style={styles.accordionChevron}>
-        {expanded[key] ? '▼' : '▶'}
+        {expanded[key] ? 'â–¼' : 'â–¶'}
       </Text>
     </TouchableOpacity>
   );
@@ -358,7 +358,7 @@ export default function OverviewScreen() {
           <Text style={styles.vehicleName}>{vehicle.name}</Text>
           <Text style={styles.vehicleDetails}>
             {vehicle.year} {vehicle.make} {vehicle.model}
-            {vehicle.reg ? ` • ${vehicle.reg}` : ''}
+            {vehicle.reg ? ` â€¢ ${vehicle.reg}` : ''}
           </Text>
         </View>
         <TouchableOpacity style={styles.editButton}>
@@ -393,7 +393,7 @@ export default function OverviewScreen() {
       <View style={styles.accordionGrid}>
         <View style={styles.accordionRow}>
           <Card style={styles.accordionCard}>
-            {renderAccordionHeader('images', '📷', 'Images', photos.length)}
+            {renderAccordionHeader('images', 'ðŸ“·', 'Images', photos.length)}
             {expanded.images && renderAccordionContent(
               photos.length > 0 ? (
                 <View style={styles.photoGrid}>
@@ -407,11 +407,11 @@ export default function OverviewScreen() {
                       onLongPress={() => handlePhotoLongPress(photo)}
                     >
                       <View style={styles.photoPlaceholder}>
-                        <Text style={styles.photoPlaceholderText}>📷</Text>
+                        <Text style={styles.photoPlaceholderText}>ðŸ“·</Text>
                       </View>
                       {photo.is_primary && (
                         <View style={styles.primaryBadge}>
-                          <Text style={styles.primaryBadgeText}>★</Text>
+                          <Text style={styles.primaryBadgeText}>â˜…</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -430,7 +430,7 @@ export default function OverviewScreen() {
           </Card>
 
           <Card style={styles.accordionCard}>
-            {renderAccordionHeader('maintenance', '📋', 'Maintenance', maintenance.length)}
+            {renderAccordionHeader('maintenance', 'ðŸ“‹', 'Maintenance', maintenance.length)}
             {expanded.maintenance && renderAccordionContent(
               maintenance.length > 0 ? (
                 <>
@@ -440,7 +440,7 @@ export default function OverviewScreen() {
                         {item.description || item.category || 'Maintenance'}
                       </Text>
                       <Text style={styles.listItemSubtitle}>
-                        {formatDate(item.date)} • {item.cost ? formatCurrency(item.cost) : '-'}
+                        {formatDate(item.date)} â€¢ {item.cost ? formatCurrency(item.cost) : '-'}
                       </Text>
                     </View>
                   ))}
@@ -460,7 +460,7 @@ export default function OverviewScreen() {
 
         <View style={styles.accordionRow}>
           <Card style={styles.accordionCard}>
-            {renderAccordionHeader('mods', '🔧', 'Mods', mods.length)}
+            {renderAccordionHeader('mods', 'ðŸ”§', 'Mods', mods.length)}
             {expanded.mods && renderAccordionContent(
               mods.length > 0 ? (
                 <>
@@ -483,7 +483,7 @@ export default function OverviewScreen() {
                         </View>
                       </View>
                       <Text style={styles.listItemSubtitle}>
-                        {formatDate(item.date)} • {item.cost ? formatCurrency(item.cost) : '-'}
+                        {formatDate(item.date)} â€¢ {item.cost ? formatCurrency(item.cost) : '-'}
                       </Text>
                     </View>
                   ))}
@@ -501,7 +501,7 @@ export default function OverviewScreen() {
           </Card>
 
           <Card style={styles.accordionCard}>
-            {renderAccordionHeader('costs', '💳', 'Costs', costs.length)}
+            {renderAccordionHeader('costs', 'ðŸ’³', 'Costs', costs.length)}
             {expanded.costs && renderAccordionContent(
               costs.length > 0 ? (
                 <>
@@ -511,7 +511,7 @@ export default function OverviewScreen() {
                         {item.description || item.category || 'Cost'}
                       </Text>
                       <Text style={styles.listItemSubtitle}>
-                        {formatDate(item.date)} • {item.amount ? formatCurrency(item.amount) : '-'}
+                        {formatDate(item.date)} â€¢ {item.amount ? formatCurrency(item.amount) : '-'}
                       </Text>
                     </View>
                   ))}
@@ -531,7 +531,7 @@ export default function OverviewScreen() {
 
         <View style={styles.accordionRow}>
           <Card style={styles.accordionCard}>
-            {renderAccordionHeader('vcds', '⚠️', 'VCDS', faults.length)}
+            {renderAccordionHeader('vcds', 'âš ï¸', 'VCDS', faults.length)}
             {expanded.vcds && renderAccordionContent(
               faults.length > 0 ? (
                 <>
@@ -572,7 +572,7 @@ export default function OverviewScreen() {
           </Card>
 
           <Card style={styles.accordionCard}>
-            {renderAccordionHeader('fuel', '⛽', 'Fuel', fuelEntries.length)}
+            {renderAccordionHeader('fuel', 'â›½', 'Fuel', fuelEntries.length)}
             {expanded.fuel && renderAccordionContent(
               fuelEntries.length > 0 ? (
                 <>
@@ -582,7 +582,7 @@ export default function OverviewScreen() {
                         {item.gallons ? `${item.gallons.toFixed(2)} gal` : 'Fuel Entry'}
                       </Text>
                       <Text style={styles.listItemSubtitle}>
-                        {formatDate(item.date)} • {item.total_cost ? formatCurrency(item.total_cost) : '-'}
+                        {formatDate(item.date)} â€¢ {item.total_cost ? formatCurrency(item.total_cost) : '-'}
                       </Text>
                     </View>
                   ))}
@@ -902,3 +902,4 @@ const styles = StyleSheet.create({
     color: '#FF453A',
   },
 });
+

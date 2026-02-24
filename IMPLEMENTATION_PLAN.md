@@ -2,8 +2,8 @@
 
 ## Status
 - **Total tasks:** 52
-- **Completed:** 45
-- **Remaining:** 7
+- **Completed:** 46
+- **Remaining:** 6
 
 ---
 
@@ -109,7 +109,7 @@
   - Required tests: Conflicts resolved without data loss
   - Notes: Currently last-write-wins, need timestamp-based resolution using `updated_at` field
 
-- [ ] **P1-03**: Add sync status indicators to UI
+- [x] **P1-03**: Add sync status indicators to UI
   - Spec: `PROJECT_SPEC.md` (offline-first with auto-sync)
   - Required tests: Unsynced badge shows on pending records
   - Notes: Visual feedback for sync state (e.g., orange dot for unsynced records)
@@ -268,3 +268,4 @@
 
 *Generated: 2026-02-23*
 *Updated: 2026-02-24 (P0-03, P0-04, P1-01 completed. All screens now have full CRUD.)*
+

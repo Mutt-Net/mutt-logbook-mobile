@@ -11,7 +11,8 @@ import {
   Alert,
 } from 'react-native';
 import { NoteService, VehicleService } from '../services/database';
-import { Note, Vehicle } from '../types';
+import { Note, Vehicle, WithSyncStatus } from '../types';
+import { isUnsynced } from '../lib/syncUtils';
 import { Card, Button, Input, Loading, EmptyState } from '../components/common';
 
 interface NoteFormData {
@@ -462,3 +463,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+

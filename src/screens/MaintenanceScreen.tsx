@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { MaintenanceService, VehicleService } from '../services/database';
-import { Maintenance, Vehicle } from '../types';
-import { Card, Button, Input, Loading, EmptyState } from '../components/common';
+import { Maintenance, Vehicle, WithSyncStatus } from '../types';
+import { isUnsynced } from '../lib/syncUtils';
+import { Card, Button, Input, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 
 const MAINTENANCE_CATEGORIES = [
   { value: 'oil_change', label: 'Oil Change' },
@@ -230,6 +231,9 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
   const renderItem = ({ item }: { item: Maintenance }) => (
     <Card>
       <View style={styles.itemHeader}>
+        <View style={styles.syncStatusContainer}>
+          <SyncStatusBadge isSynced={!isUnsynced(item)} size="small" />
+        </View>
         <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
           <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
         </View>
@@ -476,6 +480,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  syncStatusContainer: {
+    marginRight: 8,
+  },
   categoryBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -625,3 +632,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+

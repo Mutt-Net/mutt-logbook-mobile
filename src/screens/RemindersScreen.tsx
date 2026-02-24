@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { ReminderService, VehicleService } from '../services/database';
-import { Reminder, Vehicle } from '../types';
-import { Card, Input, Loading, EmptyState } from '../components/common';
+import { Reminder, Vehicle, WithSyncStatus } from '../types';
+import { isUnsynced } from '../lib/syncUtils';
+import { Card, Input, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 
 const REMINDER_TYPES = [
   { value: 'oil_change', label: 'Oil Change' },
@@ -673,3 +674,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+

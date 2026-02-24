@@ -156,6 +156,15 @@ export interface SyncableRecord<T> {
   updated_at: string;
 }
 
+// Extension type for records with sync status
+export interface WithSyncStatus {
+  synced: number; // 0 = unsynced, 1 = synced
+  remote_id?: number | null;
+}
+
+// Utility type to add sync status to any entity
+export type SyncStatusEntity<T> = T & WithSyncStatus;
+
 // API Response types
 export interface ApiResponse<T> {
   data: T;

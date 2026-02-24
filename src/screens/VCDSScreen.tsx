@@ -11,7 +11,8 @@ import {
   Alert,
 } from 'react-native';
 import { VCDSFaultService, VehicleService } from '../services/database';
-import { VCDSFault, Vehicle } from '../types';
+import { VCDSFault, Vehicle, WithSyncStatus } from '../types';
+import { isUnsynced } from '../lib/syncUtils';
 import { Card, Button, Input, Loading, EmptyState } from '../components/common';
 
 interface VCDSFormData {
@@ -546,3 +547,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+

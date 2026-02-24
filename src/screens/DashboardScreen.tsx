@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import { SyncService,
   View,
   Text,
   StyleSheet,
@@ -8,15 +8,15 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-import {
+import { SyncService,
   VehicleService,
   MaintenanceService,
   ModService,
   CostService,
   VCDSFaultService,
 } from '../services/database';
-import { Vehicle, Maintenance, Mod, Cost, VCDSFault } from '../types';
-import { Card, Loading, EmptyState } from '../components/common';
+import { SyncService, Vehicle, Maintenance, Mod, Cost, VCDSFault } from '../types';
+import { SyncService, Card, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 
 interface DashboardStats {
   maintenanceCount: number;
@@ -404,3 +404,4 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
 });
+

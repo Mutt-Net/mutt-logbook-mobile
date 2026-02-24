@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { FuelEntryService, VehicleService } from '../services/database';
-import { FuelEntry, Vehicle } from '../types';
-import { Card, Input, Loading, EmptyState } from '../components/common';
+import { FuelEntry, Vehicle, WithSyncStatus } from '../types';
+import { isUnsynced } from '../lib/syncUtils';
+import { Card, Input, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 
 interface FuelFormData {
   date: string;
@@ -603,3 +604,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+
