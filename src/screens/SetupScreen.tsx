@@ -14,6 +14,7 @@ import { Button } from '../components/common';
 import { configService } from '../services/config';
 import { setHomeWifiSSID, setHomeWifiPassword, ensureLocationPermission } from '../services/wifi';
 import apiService from '../services/api';
+import { logger } from '../lib/logger';
 
 interface SetupScreenProps {
   onSetupComplete: () => void;
@@ -83,7 +84,7 @@ export default function SetupScreen({ onSetupComplete }: SetupScreenProps) {
       try {
         await apiService.auth.setPin(pin);
       } catch (pinError) {
-        console.log('PIN not set on server (may already exist):', pinError);
+        logger.info('PIN not set on server (may already exist)', { error: pinError });
       }
       
       await configService.setPin(pin);

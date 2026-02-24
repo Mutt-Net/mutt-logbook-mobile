@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Platform, PermissionsAndroid } from 'react-native';
 import { configService } from './config';
+import { logger } from '../lib/logger';
 
 const HOME_WIFI_SSID_KEY = 'home_wifi_ssid';
 const DEFAULT_HOME_WIFI_SSID = '';
@@ -24,7 +25,7 @@ export const requestLocationPermission = async (): Promise<boolean> => {
       );
       return granted === PermissionsAndroid.RESULTS.GRANTED;
     } catch (err) {
-      console.warn('Location permission error:', err);
+      logger.warn('Location permission error', { error: err });
       return false;
     }
   } else {
@@ -52,7 +53,7 @@ export const setHomeWifiSSID = async (ssid: string): Promise<void> => {
     await configService.setHomeWifiSSID(ssid);
     await AsyncStorage.setItem(HOME_WIFI_SSID_KEY, ssid);
   } catch (error) {
-    console.warn('Failed to save WiFi SSID:', error);
+    logger.warn('Failed to save WiFi SSID', { error });
   }
 };
 
@@ -69,7 +70,7 @@ export const setHomeWifiPassword = async (password: string): Promise<void> => {
   try {
     await configService.setHomeWifiPassword(password);
   } catch (error) {
-    console.warn('Failed to save WiFi password:', error);
+    logger.warn('Failed to save WiFi password', { error });
   }
 };
 
@@ -77,7 +78,7 @@ export const isApiReachable = async (): Promise<boolean> => {
   try {
     const apiUrl = await configService.getApiUrl();
     if (!apiUrl) {
-      console.log('API not reachable: No API URL configured');
+      logger.info('API not reachable: No API URL configured');
       return false;
     }
     const controller = new AbortController();
@@ -87,10 +88,10 @@ export const isApiReachable = async (): Promise<boolean> => {
       signal: controller.signal 
     });
     clearTimeout(timeoutId);
-    console.log('API reachable, status:', response.status);
+    logger.info('API reachable', { status: response.status });
     return response.ok;
   } catch (error: any) {
-    console.log('API not reachable:', error?.message || error);
+    logger.info('API not reachable', { message: error?.message || error });
     return false;
   }
 };

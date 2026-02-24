@@ -15,6 +15,7 @@ import {
 } from './database';
 import apiService from './api';
 import { addWifiListener, removeWifiListener } from './wifi';
+import { logger } from '../lib/logger';
 
 const LAST_SYNC_KEY = 'last_sync_timestamp';
 
@@ -64,7 +65,7 @@ const setLastSyncTimestamp = async (timestamp: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(LAST_SYNC_KEY, timestamp);
   } catch (error) {
-    console.warn('Failed to save last sync timestamp:', error);
+    logger.warn('Failed to save last sync timestamp', { error });
   }
 };
 
@@ -100,7 +101,7 @@ class SyncManager {
         try {
           await this.syncAll();
         } catch (error) {
-          console.warn('Auto-sync failed:', error);
+          logger.warn('Auto-sync failed', { error });
         }
       }
     });

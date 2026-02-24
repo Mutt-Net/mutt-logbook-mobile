@@ -13,6 +13,7 @@ import { syncManager } from '../services/sync';
 import { isConnectedToHomeWifi, getHomeWifiSSID, setHomeWifiSSID, getHomeWifiPassword, setHomeWifiPassword, isApiReachable } from '../services/wifi';
 import { configService } from '../services/config';
 import { Card, Button, Input, Loading } from '../components/common';
+import { logger } from '../lib/logger';
 
 const APP_VERSION = '1.2.1';
 
@@ -53,7 +54,7 @@ export default function SettingsScreen() {
       setHomeWifiSSIDState(savedWifiSSID);
       setApiReachable(apiUp);
     } catch (error) {
-      console.warn('Failed to load settings:', error);
+      logger.warn('Failed to load settings', { error });
     } finally {
       setLoading(false);
     }

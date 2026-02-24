@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { Vehicle } from '../types';
 import { VehicleService } from '../services/database';
+import { logger } from '../lib/logger';
 
 interface VehicleContextType {
   selectedVehicleId: number | null;
@@ -24,7 +25,7 @@ export const VehicleProvider: React.FC<VehicleProviderProps> = ({ children }) =>
       const allVehicles = await VehicleService.getAll();
       setVehicles(allVehicles);
     } catch (error) {
-      console.error('Failed to refresh vehicles:', error);
+      logger.error('Failed to refresh vehicles', { error });
     }
   }, []);
 
