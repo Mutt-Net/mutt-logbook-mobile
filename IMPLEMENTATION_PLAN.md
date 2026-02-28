@@ -2,8 +2,8 @@
 
 ## Status
 - **Total tasks:** 52
-- **Completed:** 46
-- **Remaining:** 6
+- **Completed:** 49 (P0-01~05, P1-01~04, P2-05, P4-01~06)
+- **Remaining:** 9 (P2-01~04, P3-01~05, P4-07~08)
 
 ---
 
@@ -114,10 +114,11 @@
   - Required tests: Unsynced badge shows on pending records
   - Notes: Visual feedback for sync state (e.g., orange dot for unsynced records)
 
-- [ ] **P1-04**: Implement proper error handling for sync failures
+- [x] **P1-04**: Implement proper error handling for sync failures
+  - Completed: 2026-02-28
   - Spec: `src/services/sync.ts`
   - Required tests: Failed syncs retry, user notified
-  - Notes: Currently errors logged via logger.warn but not surfaced to user in UI
+  - Notes: getSyncErrors/setSyncErrors/clearSyncErrors persisted to AsyncStorage with 24hr staleness. SyncManager exposes these methods for UI consumption. Auto-sync and manual sync failures stored for user visibility.
 
 ### P2: Enhanced Features
 
@@ -141,10 +142,10 @@
   - Required tests: Export creates portable format, import restores
   - Notes: API has `/api/vehicles/{id}/export` and `/api/vehicles/import` endpoints. Add to SettingsScreen or VehicleScreen.
 
-- [ ] **P2-05**: Implement analytics dashboard
+- [x] **P2-05**: Implement analytics dashboard
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (types include Analytics, Dashboard)
-  - Required tests: Charts show spending by category, monthly trends
-  - Notes: Types defined (Analytics, Dashboard) but no visualization. DashboardScreen shows basic stats only.
+  - Notes: AnalyticsScreen implemented with monthly spending bar chart (react-native-gifted-charts), category spending donut chart, service interval status section. analyticsService with AsyncStorage cache. Analytics card added to DashboardScreen.
 
 ### P3: Polish & Quality
 
@@ -195,10 +196,10 @@
   - Completed: 2026-02-24
   - Notes: All screens functional for CRUD operations
 
-- [ ] **P4-06**: Remove console.log statements in production code
+- [x] **P4-06**: Remove console.log statements in production code
+  - Completed: 2026-02-28
   - Spec: Code quality
-  - Required tests: No console.log in src/
-  - Notes: Logger exists but some code may still use console.log directly. Should use logger.* methods.
+  - Notes: All console statements replaced with logger.* calls via centralized logger in src/lib/logger.ts.
 
 - [ ] **P4-07**: Enable TypeScript strict null checks
   - Spec: `tsconfig.json`
