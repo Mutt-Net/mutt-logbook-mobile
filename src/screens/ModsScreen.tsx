@@ -196,7 +196,8 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
       setModalVisible(false);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save mod');
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save mod. ${errMsg}`);
     } finally {
       setSaving(false);
     }

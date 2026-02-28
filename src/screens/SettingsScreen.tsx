@@ -49,6 +49,10 @@ export default function SettingsScreen() {
   const [tempWifiPassword, setTempWifiPassword] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Sync error state
+  const [syncErrors, setSyncErrors] = useState<string[]>([]);
+  const [syncErrorTimestamp, setSyncErrorTimestamp] = useState<string | null>(null);
+
   // Export/import state
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [exportModalVisible, setExportModalVisible] = useState(false);
@@ -59,13 +63,16 @@ export default function SettingsScreen() {
 
   const loadSettings = useCallback(async () => {
     try {
-      const [savedApiUrl, lastSync, wifiConnected, savedWifiSSID, apiUp] = await Promise.all([
+      const [savedApiUrl, lastSync, wifiConnected, savedWifiSSID, apiUp, errorInfo] = await Promise.all([
         configService.getApiUrl(),
         syncManager.getLastSyncTime(),
         isConnectedToHomeWifi(),
         getHomeWifiSSID(),
         isApiReachable(),
+        syncManager.getSyncErrorInfo(),
       ]);
+      setSyncErrors(errorInfo.errors);
+      setSyncErrorTimestamp(errorInfo.timestamp);
 
       if (savedApiUrl) {
         setApiUrl(savedApiUrl);
@@ -100,7 +107,8 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       setSyncStatus('error');
-      Alert.alert('Sync Error', 'An unexpected error occurred during sync');
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Sync Error', `Sync failed: ${errMsg}. Check your API URL and network connection.`);
       setTimeout(() => setSyncStatus('idle'), 3000);
     }
   };
@@ -174,6 +182,12 @@ export default function SettingsScreen() {
     setVerifyingPin(false);
     setPendingAction(null);
     setPinInput('');
+  };
+
+  const handleClearSyncErrors = async () => {
+    await syncManager.clearSyncErrors();
+    setSyncErrors([]);
+    setSyncErrorTimestamp(null);
   };
 
   const handleExportVehicle = async (vehicle: Vehicle) => {
@@ -438,6 +452,25 @@ export default function SettingsScreen() {
             </Text>
           </TouchableOpacity>
         </Card>
+
+        {syncErrors.length > 0 && (
+          <View style={styles.syncErrorBanner}>
+            <View style={styles.syncErrorHeader}>
+              <Text style={styles.syncErrorTitle}>Sync Errors</Text>
+              <TouchableOpacity onPress={handleClearSyncErrors}>
+                <Text style={styles.syncErrorClear}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+            {syncErrorTimestamp && (
+              <Text style={styles.syncErrorTime}>
+                Last occurred: {formatLastSync(syncErrorTimestamp)}
+              </Text>
+            )}
+            {syncErrors.map((err, i) => (
+              <Text key={i} style={styles.syncErrorItem}>• {err}</Text>
+            ))}
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>DATA MANAGEMENT</Text>
 
@@ -812,6 +845,41 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#8E8E93',
     marginLeft: 8,
+  },
+  syncErrorBanner: {
+    backgroundColor: '#3A1A1A',
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+    borderRadius: 10,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  syncErrorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  syncErrorTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF3B30',
+  },
+  syncErrorClear: {
+    fontSize: 13,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  syncErrorTime: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 8,
+  },
+  syncErrorItem: {
+    fontSize: 13,
+    color: '#FF9F9F',
+    marginTop: 4,
   },
   overlayContainer: {
     flex: 1,

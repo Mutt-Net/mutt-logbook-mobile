@@ -163,7 +163,8 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
       setModalVisible(false);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save cost');
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save cost. ${errMsg}`);
     } finally {
       setSaving(false);
     }

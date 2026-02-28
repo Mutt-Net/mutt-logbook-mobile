@@ -150,7 +150,8 @@ export default function NotesScreen({ vehicleId }: NotesScreenProps) {
       setModalVisible(false);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save note');
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save note. ${errMsg}`);
     } finally {
       setSaving(false);
     }

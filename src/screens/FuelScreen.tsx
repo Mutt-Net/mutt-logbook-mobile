@@ -179,7 +179,8 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
       setModalVisible(false);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save fuel entry');
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save fuel entry. ${errMsg}`);
     } finally {
       setSaving(false);
     }

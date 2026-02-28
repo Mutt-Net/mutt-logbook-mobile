@@ -142,8 +142,9 @@ export default function ReceiptsScreen({ vehicleId }: ReceiptsScreenProps) {
       }
       setModalVisible(false);
       await loadData();
-    } catch {
-      Alert.alert('Error', 'Failed to save receipt');
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save receipt. ${errMsg}`);
     } finally {
       setSaving(false);
     }

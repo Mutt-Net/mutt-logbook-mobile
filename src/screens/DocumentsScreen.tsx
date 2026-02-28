@@ -134,8 +134,9 @@ export default function DocumentsScreen({ vehicleId }: DocumentsScreenProps) {
       }
       setModalVisible(false);
       await loadData();
-    } catch {
-      Alert.alert('Error', 'Failed to save document');
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save document. ${errMsg}`);
     } finally {
       setSaving(false);
     }

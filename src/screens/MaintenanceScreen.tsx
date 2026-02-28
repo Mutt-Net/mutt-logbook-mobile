@@ -164,7 +164,8 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
       setModalVisible(false);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save maintenance record');
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save maintenance record. ${errMsg}`);
     } finally {
       setSaving(false);
     }

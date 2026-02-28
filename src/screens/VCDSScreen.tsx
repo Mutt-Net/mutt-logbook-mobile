@@ -176,7 +176,8 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
       setModalVisible(false);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save fault code');
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save fault code. ${errMsg}`);
     } finally {
       setSaving(false);
     }

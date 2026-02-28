@@ -169,10 +169,10 @@
   - Required tests: Spending trends visible
   - Notes: CostsScreen has category summary but no charts. Need chart library (react-native-chart-kit or similar).
 
-- [ ] **P3-05**: Improve error messages and user feedback
+- [x] **P3-05**: Improve error messages and user feedback
+  - Completed: 2026-02-28
   - Spec: General UX improvement
-  - Required tests: All errors have actionable messages
-  - Notes: Generic "Failed to save" messages throughout. Should use logger and show more specific errors.
+  - Notes: All 10 screens updated: generic "Failed to save X" → "Could not save X. {error.message}". SettingsScreen shows sync error banner (red, dismissible) when sync failures exist, loaded from AsyncStorage. Sync failure message includes error detail and advice to check API URL/network.
 
 ### P4: Technical Debt
 

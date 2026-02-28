@@ -107,7 +107,8 @@ export default function GuidesScreen({ vehicleId }: GuidesScreenProps) {
       setModalVisible(false);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save guide');
+      const errMsg = error instanceof Error ? error.message : 'Please try again';
+      Alert.alert('Save Failed', `Could not save guide. ${errMsg}`);
     } finally {
       setSaving(false);
     }
