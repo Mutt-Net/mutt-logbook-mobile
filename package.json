@@ -21,7 +21,13 @@
       "<rootDir>/src/__tests__/**/*.test.ts",
       "<rootDir>/src/__tests__/**/*.test.tsx"
     ],
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json"]
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ]
   },
   "dependencies": {
     "@craftzdog/react-native-buffer": "^6.1.1",
@@ -35,6 +41,7 @@
     "expo-asset": "~11.0.4",
     "expo-image-picker": "~16.0.6",
     "expo-location": "~18.0.10",
+    "expo-notifications": "~0.29.14",
     "expo-secure-store": "~14.0.1",
     "expo-sqlite": "~15.1.2",
     "expo-status-bar": "~2.0.1",

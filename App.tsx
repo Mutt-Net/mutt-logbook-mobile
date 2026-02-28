@@ -1,12 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { AppNavigator } from './src/navigation';
 import { initDatabase } from './src/services/database';
 import syncManager from './src/services/sync';
+import { scheduleReminderNotifications } from './src/services/notifications';
 import { VehicleProvider } from './src/context/VehicleContext';
 import { configService } from './src/services/config';
 import SetupScreen from './src/screens/SetupScreen';
+
+// Display notifications while the app is foregrounded
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const Loading = () => (
   <View style={styles.loadingContainer}>
@@ -41,6 +52,7 @@ export default function App() {
       setError(null);
       await initDatabase();
       syncManager.startAutoSync();
+      scheduleReminderNotifications(); // fire-and-forget; non-blocking
       setIsReady(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
