@@ -17,6 +17,8 @@ import { SyncService,
 } from '../services/database';
 import { SyncService, Vehicle, Maintenance, Mod, Cost, VCDSFault } from '../types';
 import { SyncService, Card, Loading, EmptyState, SyncStatusBadge } from '../components/common';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { DashboardStackScreenProps } from '../navigation/types';
 
 interface DashboardStats {
   maintenanceCount: number;
@@ -26,7 +28,7 @@ interface DashboardStats {
   totalSpent: number;
 }
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }: DashboardStackScreenProps<'DashboardHome'>) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const [recentMaintenance, setRecentMaintenance] = useState<Maintenance[]>([]);
@@ -39,6 +41,7 @@ export default function DashboardScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [analyticsPreview, setAnalyticsPreview] = useState<string | null>(null);
 
   const loadVehicles = useCallback(async () => {
     const allVehicles = await VehicleService.getAll();
@@ -91,6 +94,35 @@ export default function DashboardScreen() {
     setRecentMaintenance(maintenance.slice(0, 5));
   }, [selectedVehicleId]);
 
+  const loadAnalyticsPreview = useCallback(async (vehicleId: number) => {
+    try {
+      const raw = await AsyncStorage.getItem(`analytics_${vehicleId}`);
+      if (!raw) return;
+      const cached = JSON.parse(raw);
+      const intervals: Record<string, { miles: number; months: number }> = cached.data?.service_intervals ?? {};
+      const lastService: Record<string, { date: string | null; mileage: number | null }> = cached.data?.last_service ?? {};
+      const currentMileage: number = cached.data?.current_mileage ?? 0;
+      let overdue = 0;
+      let dueSoon = 0;
+      for (const [name, interval] of Object.entries(intervals)) {
+        const last = lastService[name] ?? { date: null, mileage: null };
+        const milesSince = last.mileage != null ? currentMileage - last.mileage : Infinity;
+        const monthsSince = last.date
+          ? (new Date().getFullYear() - new Date(last.date).getFullYear()) * 12 +
+            (new Date().getMonth() - new Date(last.date).getMonth())
+          : Infinity;
+        if (milesSince > interval.miles || monthsSince > interval.months) overdue++;
+        else if (milesSince > interval.miles - 500 || monthsSince > interval.months - 1) dueSoon++;
+      }
+      const parts: string[] = [];
+      if (overdue > 0) parts.push(`${overdue} overdue`);
+      if (dueSoon > 0) parts.push(`${dueSoon} due soon`);
+      setAnalyticsPreview(parts.length > 0 ? parts.join(' · ') : 'All services OK');
+    } catch {
+      // silently ignore — preview is best-effort
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     await loadVehicles();
     await loadDashboardData();
@@ -120,15 +152,16 @@ export default function DashboardScreen() {
     const fetchDashboardData = async () => {
       if (selectedVehicleId) {
         await loadDashboardData();
+        await loadAnalyticsPreview(selectedVehicleId);
       }
     };
-    
+
     fetchDashboardData();
-    
+
     return () => {
       cancelled = true;
     };
-  }, [selectedVehicleId, loadDashboardData]);
+  }, [selectedVehicleId, loadDashboardData, loadAnalyticsPreview]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -266,6 +299,23 @@ export default function DashboardScreen() {
           ))
         )}
       </Card>
+
+      {selectedVehicleId && (
+        <Card
+          onPress={() => navigation.navigate('Analytics', { vehicleId: selectedVehicleId })}
+          style={styles.analyticsCard}
+        >
+          <View style={styles.analyticsCardContent}>
+            <View>
+              <Text style={styles.analyticsCardTitle}>Analytics</Text>
+              <Text style={styles.analyticsCardSub}>
+                {analyticsPreview ?? 'Service intervals · Spending trends'}
+              </Text>
+            </View>
+            <Text style={styles.analyticsCardChevron}>›</Text>
+          </View>
+        </Card>
+      )}
     </ScrollView>
   );
 }
@@ -403,5 +453,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 16,
   },
+  analyticsCard: { marginTop: 4 },
+  analyticsCardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  analyticsCardTitle: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', marginBottom: 2 },
+  analyticsCardSub: { fontSize: 13, color: '#8E8E93' },
+  analyticsCardChevron: { fontSize: 24, color: '#8E8E93' },
 });
 
