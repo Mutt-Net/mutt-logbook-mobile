@@ -7,7 +7,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import { BarChart } from 'react-native-gifted-charts';
+import { BarChart, PieChart } from 'react-native-gifted-charts';
 import { Card, Loading, EmptyState } from '../components/common';
 import { analyticsService, AnalyticsResult } from '../services/analyticsService';
 import { createLogger } from '../lib/logger';
@@ -58,6 +58,22 @@ function computeServiceRows(
 
     return { name, lastDate: last.date, lastMileage: last.mileage, status, detail };
   });
+}
+
+const CATEGORY_COLORS = ['#007AFF', '#30D158', '#FF453A', '#FFD60A', '#AF52DE', '#FF9F0A'];
+
+function buildPieData(categorySpending: Record<string, number>) {
+  const total = Object.values(categorySpending).reduce((s, v) => s + v, 0);
+  return Object.entries(categorySpending).map(([name, value], i) => ({
+    name,
+    value,
+    color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+    percentage: total > 0 ? Math.round((value / total) * 100) : 0,
+  }));
+}
+
+function formatCurrency(n: number): string {
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function buildBarData(monthly: Record<string, number>) {
@@ -189,7 +205,39 @@ export default function AnalyticsScreen({ route }: Props) {
           />
         )}
       </Card>
-      {/* CATEGORY BREAKDOWN — Task 6 */}
+      {/* CATEGORY BREAKDOWN */}
+      <Card>
+        <Text style={styles.sectionTitle}>Spending by Category</Text>
+        {Object.keys(data.category_spending ?? {}).length === 0 ? (
+          <Text style={styles.emptyText}>No category data</Text>
+        ) : (() => {
+          const pieData = buildPieData(data.category_spending ?? {});
+          return (
+            <>
+              <View style={styles.pieContainer}>
+                <PieChart
+                  data={pieData}
+                  donut
+                  radius={90}
+                  innerRadius={55}
+                  centerLabelComponent={() => (
+                    <Text style={styles.pieCenter}>
+                      {formatCurrency(pieData.reduce((s, d) => s + d.value, 0))}
+                    </Text>
+                  )}
+                />
+              </View>
+              {pieData.map((item) => (
+                <View key={item.name} style={styles.legendRow}>
+                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                  <Text style={styles.legendName}>{item.name}</Text>
+                  <Text style={styles.legendAmount}>{formatCurrency(item.value)}</Text>
+                  <Text style={styles.legendPct}>{item.percentage}%</Text>
+                </View>
+              ))}
+            </>
+          );
+        })()}</Card>
     </ScrollView>
   );
 }
@@ -222,4 +270,11 @@ const styles = StyleSheet.create({
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusPillText: { fontSize: 13, fontWeight: '600' },
   chartCard: { overflow: 'hidden' },
+  pieContainer: { alignItems: 'center', marginBottom: 16 },
+  pieCenter: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  legendRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#2C2C2E' },
+  legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
+  legendName: { flex: 1, fontSize: 14, color: '#FFFFFF' },
+  legendAmount: { fontSize: 14, color: '#FFFFFF', fontWeight: '500', marginRight: 8 },
+  legendPct: { fontSize: 13, color: '#8E8E93', width: 36, textAlign: 'right' },
 });
