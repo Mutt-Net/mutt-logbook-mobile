@@ -132,10 +132,10 @@
   - Spec: `PROJECT_SPEC.md` (Activity: diagnose-faults - Enhanced/Advanced)
   - Notes: Added Import button (orange, next to Add) in VCDSScreen header. Two-modal flow: paste text → parse via apiService.vcds.parse → review with duplicate detection → create faults locally via VCDSFaultService. Offline-first; sync handles server push.
 
-- [ ] **P2-03**: Create ReceiptsScreen and DocumentsScreen
+- [x] **P2-03**: Create ReceiptsScreen and DocumentsScreen
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Receipt/document upload")
-  - Required tests: File selected, uploaded, linked to maintenance
-  - Notes: API supports FormData, services exist but no UI screens. Need to add to navigation.
+  - Notes: Both screens created with full CRUD (FlatList, add/edit modal, delete confirmation). ReceiptsScreen: date/vendor/amount/category/notes with SyncStatusBadge. DocumentsScreen: title/description/document_type with color-coded type badges. Both registered in Dashboard/Overview/Add stacks.
 
 - [ ] **P2-04**: Add vehicle export/import functionality UI
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Export to PDF for resale")

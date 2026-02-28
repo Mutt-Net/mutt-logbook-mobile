@@ -17,6 +17,8 @@ import GuidesScreen from '../screens/GuidesScreen';
 import RemindersScreen from '../screens/RemindersScreen';
 import VehicleScreen from '../screens/VehicleScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
+import ReceiptsScreen from '../screens/ReceiptsScreen';
+import DocumentsScreen from '../screens/DocumentsScreen';
 
 import type {
   RootTabParamList,
@@ -95,6 +97,16 @@ function DashboardStackNavigator() {
         component={AnalyticsScreen}
         options={{ title: 'Analytics' }}
       />
+      <DashboardStack.Screen
+        name="Receipts"
+        component={ReceiptsScreen}
+        options={{ title: 'Receipts' }}
+      />
+      <DashboardStack.Screen
+        name="Documents"
+        component={DocumentsScreen}
+        options={{ title: 'Documents' }}
+      />
     </DashboardStack.Navigator>
   );
 }
@@ -157,6 +169,16 @@ function OverviewStackNavigator() {
         component={VehicleScreen}
         options={{ title: 'Vehicle' }}
       />
+      <OverviewStack.Screen
+        name="Receipts"
+        component={ReceiptsScreen}
+        options={{ title: 'Receipts' }}
+      />
+      <OverviewStack.Screen
+        name="Documents"
+        component={DocumentsScreen}
+        options={{ title: 'Documents' }}
+      />
     </OverviewStack.Navigator>
   );
 }
@@ -218,6 +240,16 @@ function AddStackNavigator() {
         name="Vehicle"
         component={VehicleScreen}
         options={{ title: 'Add Vehicle' }}
+      />
+      <AddStack.Screen
+        name="Receipts"
+        component={ReceiptsScreen}
+        options={{ title: 'Receipts' }}
+      />
+      <AddStack.Screen
+        name="Documents"
+        component={DocumentsScreen}
+        options={{ title: 'Documents' }}
       />
     </AddStack.Navigator>
   );

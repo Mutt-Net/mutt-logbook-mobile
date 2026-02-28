@@ -14,6 +14,8 @@ export type DashboardStackParamList = {
   Reminders: { vehicleId?: number };
   Vehicle: { vehicleId?: number };
   Analytics: { vehicleId: number };
+  Receipts: { vehicleId?: number };
+  Documents: { vehicleId?: number };
 };
 
 export type OverviewStackParamList = {
@@ -27,6 +29,8 @@ export type OverviewStackParamList = {
   Guides: { vehicleId?: number };
   Reminders: { vehicleId?: number };
   Vehicle: { vehicleId?: number };
+  Receipts: { vehicleId?: number };
+  Documents: { vehicleId?: number };
 };
 
 export type AddStackParamList = {
@@ -40,6 +44,8 @@ export type AddStackParamList = {
   Guides: { vehicleId?: number };
   Reminders: { vehicleId?: number };
   Vehicle: { vehicleId?: number };
+  Receipts: { vehicleId?: number };
+  Documents: { vehicleId?: number };
 };
 
 export type SettingsStackParamList = {
