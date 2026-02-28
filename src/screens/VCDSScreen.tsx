@@ -9,11 +9,22 @@ import {
   Modal,
   ScrollView,
   Alert,
+  TextInput,
 } from 'react-native';
 import { VCDSFaultService, VehicleService } from '../services/database';
-import { VCDSFault, Vehicle, WithSyncStatus } from '../types';
-import { isUnsynced } from '../lib/syncUtils';
+import { VCDSFault, Vehicle } from '../types';
+import apiService from '../services/api';
 import { Card, Button, Input, Loading, EmptyState } from '../components/common';
+
+interface ParsedFault {
+  address: string | null;
+  fault_code: string | null;
+  component: string | null;
+  description: string | null;
+  status: 'active' | 'cleared';
+  selected: boolean;
+  isDuplicate: boolean;
+}
 
 interface VCDSFormData {
   address: string;
@@ -44,6 +55,14 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
   const [formData, setFormData] = useState<VCDSFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // VCDS import state
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [vcdsText, setVcdsText] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [parsedFaults, setParsedFaults] = useState<ParsedFault[]>([]);
 
   const loadData = useCallback(async () => {
     const [vehicleData, faultsData] = await Promise.all([
@@ -163,6 +182,72 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
     }
   };
 
+  const handleParse = async () => {
+    if (!vcdsText.trim()) {
+      Alert.alert('Error', 'Please paste your VCDS log text first');
+      return;
+    }
+    setParsing(true);
+    try {
+      const response = await apiService.vcds.parse({ raw_text: vcdsText });
+      const existing = new Set(faults.map(f => f.fault_code).filter(Boolean));
+      const withMeta: ParsedFault[] = response.faults.map(f => ({
+        address: f.address ?? null,
+        fault_code: f.fault_code ?? null,
+        component: f.component ?? null,
+        description: f.description ?? null,
+        status: (f.status as 'active' | 'cleared') ?? 'active',
+        selected: !existing.has(f.fault_code ?? null),
+        isDuplicate: existing.has(f.fault_code ?? null),
+      }));
+      setParsedFaults(withMeta);
+      setImportModalVisible(false);
+      setReviewModalVisible(true);
+    } catch {
+      Alert.alert('Parse Failed', 'Could not parse the VCDS log. Check the format and try again.');
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const handleImport = async () => {
+    const toImport = parsedFaults.filter(f => f.selected && !f.isDuplicate);
+    if (toImport.length === 0) {
+      Alert.alert('Nothing to Import', 'Select at least one new fault to import.');
+      return;
+    }
+    setImporting(true);
+    try {
+      for (const f of toImport) {
+        await VCDSFaultService.create({
+          vehicle_id: vehicleId,
+          address: f.address,
+          fault_code: f.fault_code,
+          component: f.component,
+          description: f.description,
+          status: f.status,
+          detected_date: new Date().toISOString().split('T')[0],
+          cleared_date: null,
+          notes: null,
+        });
+      }
+      Alert.alert('Imported', `${toImport.length} fault${toImport.length !== 1 ? 's' : ''} added.`);
+      setReviewModalVisible(false);
+      setVcdsText('');
+      await loadData();
+    } catch {
+      Alert.alert('Error', 'Failed to import faults. Please try again.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const toggleFaultSelection = (index: number) => {
+    const updated = [...parsedFaults];
+    updated[index] = { ...updated[index], selected: !updated[index].selected };
+    setParsedFaults(updated);
+  };
+
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -228,9 +313,14 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
             {vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : ''}
           </Text>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddPress}>
-          <Text style={styles.addButtonText}>+ Add</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity style={styles.importButton} onPress={() => setImportModalVisible(true)}>
+            <Text style={styles.importButtonText}>Import</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddPress}>
+            <Text style={styles.addButtonText}>+ Add</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {faults.length === 0 ? (
@@ -253,6 +343,113 @@ export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
           }
         />
       )}
+
+      {/* VCDS Log Import Modal */}
+      <Modal
+        visible={importModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setImportModalVisible(false)}
+      >
+        <View style={styles.overlayContainer}>
+          <View style={styles.overlayModal}>
+            <View style={styles.overlayHeader}>
+              <Text style={styles.overlayTitle}>Import VCDS Log</Text>
+              <TouchableOpacity onPress={() => setImportModalVisible(false)}>
+                <Text style={styles.overlayClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.overlayInstruction}>
+              Paste your VCDS log output below:
+            </Text>
+            <TextInput
+              style={styles.vcdsTextInput}
+              multiline
+              value={vcdsText}
+              onChangeText={setVcdsText}
+              placeholder={'01-Engine--Status: Malfunction\n1 Fault Found:\nP0300 - Active...'}
+              placeholderTextColor="#555"
+              textAlignVertical="top"
+            />
+            <View style={styles.overlayButtons}>
+              <TouchableOpacity
+                style={[styles.overlayBtn, styles.cancelBtn]}
+                onPress={() => setImportModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.overlayBtn, styles.parseBtn, parsing && styles.btnDisabled]}
+                onPress={handleParse}
+                disabled={parsing}
+              >
+                <Text style={styles.parseBtnText}>{parsing ? 'Parsing...' : 'Parse'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Review Parsed Faults Modal */}
+      <Modal
+        visible={reviewModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setReviewModalVisible(false)}
+      >
+        <View style={styles.overlayContainer}>
+          <View style={styles.overlayModal}>
+            <View style={styles.overlayHeader}>
+              <Text style={styles.overlayTitle}>Review Parsed Faults</Text>
+              <TouchableOpacity onPress={() => setReviewModalVisible(false)}>
+                <Text style={styles.overlayClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.overlayInstruction}>
+              Found {parsedFaults.length} fault{parsedFaults.length !== 1 ? 's' : ''}. Select which to import:
+            </Text>
+            <ScrollView style={styles.parsedList}>
+              {parsedFaults.map((fault, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.parsedItem, fault.isDuplicate && styles.parsedItemDuplicate]}
+                  onPress={() => !fault.isDuplicate && toggleFaultSelection(index)}
+                  disabled={fault.isDuplicate}
+                >
+                  <View style={[styles.checkbox, fault.selected && !fault.isDuplicate && styles.checkboxSelected]}>
+                    {fault.selected && !fault.isDuplicate && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <View style={styles.parsedItemContent}>
+                    <Text style={styles.parsedFaultCode}>{fault.fault_code || 'Unknown'}</Text>
+                    {fault.component && <Text style={styles.parsedComponent}>{fault.component}</Text>}
+                    {fault.description && (
+                      <Text style={styles.parsedDescription} numberOfLines={2}>{fault.description}</Text>
+                    )}
+                    {fault.isDuplicate && <Text style={styles.duplicateBadge}>Already exists — skipped</Text>}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={styles.overlayButtons}>
+              <TouchableOpacity
+                style={[styles.overlayBtn, styles.cancelBtn]}
+                onPress={() => { setReviewModalVisible(false); setImportModalVisible(true); }}
+              >
+                <Text style={styles.cancelBtnText}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.overlayBtn, styles.parseBtn, importing && styles.btnDisabled]}
+                onPress={handleImport}
+                disabled={importing}
+              >
+                <Text style={styles.parseBtnText}>
+                  {importing ? 'Importing...' : `Import (${parsedFaults.filter(f => f.selected && !f.isDuplicate).length})`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={modalVisible}
@@ -545,6 +742,150 @@ const styles = StyleSheet.create({
   },
   modalSpacer: {
     height: 40,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  importButton: {
+    backgroundColor: '#FF9500',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  importButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  overlayContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'flex-end',
+  },
+  overlayModal: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  overlayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  overlayTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  overlayClose: {
+    fontSize: 20,
+    color: '#8E8E93',
+    padding: 4,
+  },
+  overlayInstruction: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 12,
+  },
+  vcdsTextInput: {
+    backgroundColor: '#2C2C2E',
+    color: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 180,
+    fontSize: 13,
+    fontFamily: 'monospace',
+    marginBottom: 16,
+  },
+  overlayButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  overlayBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelBtn: {
+    backgroundColor: '#3A3A3C',
+  },
+  cancelBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  parseBtn: {
+    backgroundColor: '#007AFF',
+  },
+  parseBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  parsedList: {
+    maxHeight: 320,
+    marginBottom: 8,
+  },
+  parsedItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  parsedItemDuplicate: {
+    opacity: 0.5,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#555',
+    marginRight: 12,
+    marginTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  parsedItemContent: {
+    flex: 1,
+  },
+  parsedFaultCode: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  parsedComponent: {
+    fontSize: 13,
+    color: '#FF9500',
+    marginTop: 2,
+  },
+  parsedDescription: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  duplicateBadge: {
+    fontSize: 11,
+    color: '#FF9500',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
 

@@ -122,15 +122,15 @@
 
 ### P2: Enhanced Features
 
-- [ ] **P2-01**: Implement image picker integration for vehicle photos
+- [x] **P2-01**: Implement image picker integration for vehicle photos
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Photo capture")
-  - Required tests: Photo saved locally, uploaded on sync
-  - Notes: OverviewScreen has pickImage using expo-image-picker but file handling/upload incomplete. Need to integrate with VehiclePhotoService and API.
+  - Notes: OverviewScreen has full pickImage/handleDeletePhoto/handleSetPrimary using expo-image-picker. VehiclePhotoService handles local storage with filename field. sync.ts syncs photos via api.ts photos.create/getAll.
 
-- [ ] **P2-02**: Add VCDS log import/parsing UI
+- [x] **P2-02**: Add VCDS log import/parsing UI
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Activity: diagnose-faults - Enhanced/Advanced)
-  - Required tests: Parse VCDS text, create fault records
-  - Notes: API has `/api/vcds/parse` and `/api/vcds/import` endpoints. Need UI in VCDSScreen for text input and import button.
+  - Notes: Added Import button (orange, next to Add) in VCDSScreen header. Two-modal flow: paste text → parse via apiService.vcds.parse → review with duplicate detection → create faults locally via VCDSFaultService. Offline-first; sync handles server push.
 
 - [ ] **P2-03**: Create ReceiptsScreen and DocumentsScreen
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Receipt/document upload")
