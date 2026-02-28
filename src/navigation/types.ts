@@ -13,6 +13,7 @@ export type DashboardStackParamList = {
   Guides: { vehicleId?: number };
   Reminders: { vehicleId?: number };
   Vehicle: { vehicleId?: number };
+  Analytics: { vehicleId: number };
 };
 
 export type OverviewStackParamList = {

@@ -16,6 +16,7 @@ import VCDSScreen from '../screens/VCDSScreen';
 import GuidesScreen from '../screens/GuidesScreen';
 import RemindersScreen from '../screens/RemindersScreen';
 import VehicleScreen from '../screens/VehicleScreen';
+import AnalyticsScreen from '../screens/AnalyticsScreen';
 
 import type {
   RootTabParamList,
@@ -88,6 +89,11 @@ function DashboardStackNavigator() {
         name="Vehicle"
         component={VehicleScreen}
         options={{ title: 'Vehicle' }}
+      />
+      <DashboardStack.Screen
+        name="Analytics"
+        component={AnalyticsScreen}
+        options={{ title: 'Analytics' }}
       />
     </DashboardStack.Navigator>
   );
