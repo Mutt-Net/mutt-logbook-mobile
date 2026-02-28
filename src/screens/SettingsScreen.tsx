@@ -7,11 +7,24 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  Share,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncManager } from '../services/sync';
 import { isConnectedToHomeWifi, getHomeWifiSSID, setHomeWifiSSID, getHomeWifiPassword, setHomeWifiPassword, isApiReachable } from '../services/wifi';
 import { configService } from '../services/config';
+import {
+  VehicleService,
+  MaintenanceService,
+  ModService,
+  CostService,
+  FuelEntryService,
+  NoteService,
+  VCDSFaultService,
+  ReminderService,
+} from '../services/database';
+import { Vehicle } from '../types';
 import { Card, Button, Input, Loading } from '../components/common';
 import { logger } from '../lib/logger';
 
@@ -35,6 +48,14 @@ export default function SettingsScreen() {
   const [tempWifiSSID, setTempWifiSSID] = useState('');
   const [tempWifiPassword, setTempWifiPassword] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Export/import state
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -153,6 +174,120 @@ export default function SettingsScreen() {
     setVerifyingPin(false);
     setPendingAction(null);
     setPinInput('');
+  };
+
+  const handleExportVehicle = async (vehicle: Vehicle) => {
+    setExporting(true);
+    setExportModalVisible(false);
+    try {
+      const [maintenance, mods, costs, fuel, notes, vcds, reminders] = await Promise.all([
+        MaintenanceService.getByVehicle(vehicle.id),
+        ModService.getByVehicle(vehicle.id),
+        CostService.getByVehicle(vehicle.id),
+        FuelEntryService.getByVehicle(vehicle.id),
+        NoteService.getByVehicle(vehicle.id),
+        VCDSFaultService.getByVehicle(vehicle.id),
+        ReminderService.getByVehicle(vehicle.id),
+      ]);
+      const exportData = {
+        version: '1.0',
+        exported_at: new Date().toISOString(),
+        vehicle,
+        maintenance,
+        mods,
+        costs,
+        fuel_entries: fuel,
+        notes,
+        vcds_faults: vcds,
+        reminders,
+      };
+      await Share.share({
+        title: `${vehicle.name} - Logbook Export`,
+        message: JSON.stringify(exportData, null, 2),
+      });
+    } catch (error) {
+      logger.error('Export failed', { error });
+      Alert.alert('Export Failed', 'Could not export vehicle data.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleOpenExport = async () => {
+    try {
+      const allVehicles = await VehicleService.getAll();
+      setVehicles(allVehicles);
+      setExportModalVisible(true);
+    } catch {
+      Alert.alert('Error', 'Could not load vehicles');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importJson.trim()) {
+      Alert.alert('Error', 'Paste vehicle export JSON first');
+      return;
+    }
+    setImporting(true);
+    try {
+      const data = JSON.parse(importJson);
+      if (!data.vehicle || !data.version) {
+        Alert.alert('Invalid Format', 'This does not appear to be a valid vehicle export.');
+        return;
+      }
+      const { vehicle: v, maintenance = [], mods = [], costs = [], fuel_entries = [], notes = [], vcds_faults = [], reminders = [] } = data;
+      const newVehicleId = await VehicleService.create({
+        name: `${v.name} (Imported)`,
+        make: v.make,
+        model: v.model,
+        year: v.year,
+        vin: v.vin,
+        color: v.color,
+        mileage: v.mileage,
+        license_plate: v.license_plate,
+        notes: v.notes,
+        synced: 0,
+        remote_id: null,
+        updated_at: new Date().toISOString(),
+      });
+      let count = 1;
+      for (const r of maintenance) {
+        await MaintenanceService.create({ ...r, vehicle_id: newVehicleId, synced: 0, remote_id: null });
+        count++;
+      }
+      for (const r of mods) {
+        await ModService.create({ ...r, vehicle_id: newVehicleId, synced: 0, remote_id: null });
+        count++;
+      }
+      for (const r of costs) {
+        await CostService.create({ ...r, vehicle_id: newVehicleId, synced: 0, remote_id: null });
+        count++;
+      }
+      for (const r of fuel_entries) {
+        await FuelEntryService.create({ ...r, vehicle_id: newVehicleId, synced: 0, remote_id: null });
+        count++;
+      }
+      for (const r of notes) {
+        await NoteService.create({ ...r, vehicle_id: newVehicleId, synced: 0, remote_id: null });
+        count++;
+      }
+      for (const r of vcds_faults) {
+        await VCDSFaultService.create({ ...r, vehicle_id: newVehicleId, synced: 0, remote_id: null });
+        count++;
+      }
+      for (const r of reminders) {
+        await ReminderService.create({ ...r, vehicle_id: newVehicleId, synced: 0, remote_id: null });
+        count++;
+      }
+      Alert.alert('Import Complete', `Imported ${v.name} with ${count} records.`);
+      setImportModalVisible(false);
+      setImportJson('');
+    } catch (error) {
+      logger.error('Import failed', { error });
+      Alert.alert('Import Failed', 'Invalid JSON or import error. Check the format and try again.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const formatLastSync = (timestamp: string | null): string => {
@@ -304,6 +439,28 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </Card>
 
+        <Text style={styles.sectionTitle}>DATA MANAGEMENT</Text>
+
+        <Card>
+          <TouchableOpacity style={styles.settingRow} onPress={handleOpenExport} disabled={exporting}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Export Vehicle Data</Text>
+              <Text style={styles.settingValue}>Share complete vehicle history as JSON</Text>
+            </View>
+            <Text style={styles.chevron}>{exporting ? '...' : '›'}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={() => setImportModalVisible(true)}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Import Vehicle Data</Text>
+              <Text style={styles.settingValue}>Restore from exported JSON</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </Card>
+
         <Text style={styles.sectionTitle}>ABOUT</Text>
 
         <Card>
@@ -326,6 +483,85 @@ export default function SettingsScreen() {
 
         <View style={styles.footer} />
       </ScrollView>
+
+      {/* Export Vehicle Picker Modal */}
+      <Modal
+        visible={exportModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setExportModalVisible(false)}
+      >
+        <View style={styles.overlayContainer}>
+          <View style={styles.overlayModal}>
+            <View style={styles.overlayHeader}>
+              <Text style={styles.overlayTitle}>Select Vehicle to Export</Text>
+              <TouchableOpacity onPress={() => setExportModalVisible(false)}>
+                <Text style={styles.overlayClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            {vehicles.length === 0 ? (
+              <Text style={styles.overlayEmpty}>No vehicles found</Text>
+            ) : (
+              vehicles.map(v => (
+                <TouchableOpacity
+                  key={v.id}
+                  style={styles.vehicleRow}
+                  onPress={() => handleExportVehicle(v)}
+                >
+                  <Text style={styles.vehicleName}>{v.name}</Text>
+                  <Text style={styles.vehicleDetail}>{v.year} {v.make} {v.model}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Import Modal */}
+      <Modal
+        visible={importModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setImportModalVisible(false)}
+      >
+        <View style={styles.overlayContainer}>
+          <View style={styles.overlayModal}>
+            <View style={styles.overlayHeader}>
+              <Text style={styles.overlayTitle}>Import Vehicle Data</Text>
+              <TouchableOpacity onPress={() => setImportModalVisible(false)}>
+                <Text style={styles.overlayClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.overlayInstruction}>
+              Paste the exported vehicle JSON below:
+            </Text>
+            <TextInput
+              style={styles.importTextInput}
+              multiline
+              value={importJson}
+              onChangeText={setImportJson}
+              placeholder='{"version":"1.0","vehicle":{...}}'
+              placeholderTextColor="#555"
+              textAlignVertical="top"
+            />
+            <View style={styles.overlayButtons}>
+              <TouchableOpacity
+                style={[styles.overlayBtn, styles.cancelBtn]}
+                onPress={() => setImportModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.overlayBtn, styles.importActionBtn, importing && styles.btnDisabled]}
+                onPress={handleImport}
+                disabled={importing}
+              >
+                <Text style={styles.importActionBtnText}>{importing ? 'Importing...' : 'Import'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={editingApiUrl}
@@ -571,5 +807,100 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     marginTop: 8,
+  },
+  chevron: {
+    fontSize: 20,
+    color: '#8E8E93',
+    marginLeft: 8,
+  },
+  overlayContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'flex-end',
+  },
+  overlayModal: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 20,
+    maxHeight: '75%',
+  },
+  overlayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  overlayTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  overlayClose: {
+    fontSize: 20,
+    color: '#8E8E93',
+    padding: 4,
+  },
+  overlayInstruction: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 12,
+  },
+  overlayEmpty: {
+    color: '#8E8E93',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  vehicleRow: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  vehicleName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  vehicleDetail: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  importTextInput: {
+    backgroundColor: '#2C2C2E',
+    color: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 160,
+    fontSize: 12,
+    fontFamily: 'monospace',
+    marginBottom: 16,
+  },
+  overlayButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  overlayBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelBtn: {
+    backgroundColor: '#3A3A3C',
+  },
+  cancelBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  importActionBtn: {
+    backgroundColor: '#30D158',
+  },
+  importActionBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
 });

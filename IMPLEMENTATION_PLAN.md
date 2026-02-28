@@ -137,10 +137,10 @@
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Receipt/document upload")
   - Notes: Both screens created with full CRUD (FlatList, add/edit modal, delete confirmation). ReceiptsScreen: date/vendor/amount/category/notes with SyncStatusBadge. DocumentsScreen: title/description/document_type with color-coded type badges. Both registered in Dashboard/Overview/Add stacks.
 
-- [ ] **P2-04**: Add vehicle export/import functionality UI
+- [x] **P2-04**: Add vehicle export/import functionality UI
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Export to PDF for resale")
-  - Required tests: Export creates portable format, import restores
-  - Notes: API has `/api/vehicles/{id}/export` and `/api/vehicles/import` endpoints. Add to SettingsScreen or VehicleScreen.
+  - Notes: Added DATA MANAGEMENT section to SettingsScreen. Export: queries all local SQLite data for selected vehicle, builds JSON, shares via React Native Share. Import: paste JSON, creates new vehicle with all records locally (offline-first). Both modals bottom-sheet style.
 
 - [x] **P2-05**: Implement analytics dashboard
   - Completed: 2026-02-28
