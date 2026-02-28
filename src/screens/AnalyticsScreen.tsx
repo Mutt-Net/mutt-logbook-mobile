@@ -7,6 +7,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
+import { BarChart } from 'react-native-gifted-charts';
 import { Card, Loading, EmptyState } from '../components/common';
 import { analyticsService, AnalyticsResult } from '../services/analyticsService';
 import { createLogger } from '../lib/logger';
@@ -57,6 +58,17 @@ function computeServiceRows(
 
     return { name, lastDate: last.date, lastMileage: last.mileage, status, detail };
   });
+}
+
+function buildBarData(monthly: Record<string, number>) {
+  return Object.entries(monthly)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([key, value]) => ({
+      value,
+      label: new Date(`${key}-01`).toLocaleString('en-US', { month: 'short' }),
+      frontColor: '#007AFF',
+    }));
 }
 
 const STATUS_CONFIG: Record<ServiceStatus, { label: string; color: string; bg: string }> = {
@@ -158,7 +170,25 @@ export default function AnalyticsScreen({ route }: Props) {
         )}
       </Card>
 
-      {/* MONTHLY SPENDING — Task 5 */}
+      {/* MONTHLY SPENDING */}
+      <Card style={styles.chartCard}>
+        <Text style={styles.sectionTitle}>Monthly Spending</Text>
+        {Object.keys(data.monthly_spending ?? {}).length === 0 ? (
+          <Text style={styles.emptyText}>No spending data</Text>
+        ) : (
+          <BarChart
+            data={buildBarData(data.monthly_spending ?? {})}
+            barWidth={32}
+            spacing={16}
+            noOfSections={4}
+            barBorderRadius={4}
+            yAxisTextStyle={{ color: '#8E8E93', fontSize: 11 }}
+            xAxisLabelTextStyle={{ color: '#8E8E93', fontSize: 11 }}
+            hideRules
+            isAnimated
+          />
+        )}
+      </Card>
       {/* CATEGORY BREAKDOWN — Task 6 */}
     </ScrollView>
   );
@@ -191,4 +221,5 @@ const styles = StyleSheet.create({
   serviceDetail: { fontSize: 13, color: '#8E8E93' },
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusPillText: { fontSize: 13, fontWeight: '600' },
+  chartCard: { overflow: 'hidden' },
 });
