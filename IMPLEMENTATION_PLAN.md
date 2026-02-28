@@ -2,8 +2,8 @@
 
 ## Status
 - **Total tasks:** 52
-- **Completed:** 49 (P0-01~05, P1-01~04, P2-05, P4-01~06)
-- **Remaining:** 9 (P2-01~04, P3-01~05, P4-07~08)
+- **Completed:** 51 (P0-01~05, P1-01~04, P2-01~05, P3-01~05, P4-01~06, P4-08)
+- **Remaining:** 1 (P4-07 — TypeScript strict mode, intentionally deferred)
 
 ---
 
@@ -149,15 +149,15 @@
 
 ### P3: Polish & Quality
 
-- [ ] **P3-01**: Add automated test framework
+- [x] **P3-01**: Add automated test framework
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Build & Test Commands - "No test framework configured yet")
-  - Required tests: Unit tests for services, integration tests for sync
-  - Notes: Jest or Detox recommended for React Native. Need to configure in package.json.
+  - Notes: jest, jest-expo, @testing-library/react-native, @types/jest installed. Jest configured in package.json (testEnvironment: node, babel-jest transform, testMatch: src/__tests__/**). Extracted calculateAvgMpg + calculateMpgSeries to src/lib/fuelUtils.ts; 17 passing unit tests in src/__tests__/fuelUtils.test.ts covering edge cases (null fields, unsorted input, rounding, date labels).
 
-- [ ] **P3-02**: Add service interval reminder notifications
+- [x] **P3-02**: Add service interval reminder notifications
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Push notifications for maintenance reminders")
-  - Required tests: Notification fires when due
-  - Notes: Need expo-notifications. RemindersScreen has next_due_date/mileage but no notification logic.
+  - Notes: expo-notifications installed. src/services/notifications.ts: requestNotificationPermissions() + scheduleReminderNotifications() which cancels all existing notifications then reschedules based on Reminder.next_due_date within 14-day window. Overdue → fires 5s after app open; 1-day → fires 9am due date; upcoming → fires 9am due date. Notification handler set at module level in App.tsx (foreground alerts enabled). Called fire-and-forget in initialize() after DB ready.
 
 - [x] **P3-03**: Implement fuel economy analytics visualization
   - Completed: 2026-02-28
@@ -206,10 +206,10 @@
   - Required tests: No implicit any, strict null checks pass
   - Notes: Currently `"strict": false`. Some loose typing in API responses and navigation.
 
-- [ ] **P4-08**: Refactor OverviewScreen
+- [x] **P4-08**: Refactor OverviewScreen
+  - Completed: 2026-02-28
   - Spec: Code quality
-  - Required tests: Component < 500 lines
-  - Notes: Currently ~900 lines. Should extract accordion sections into separate components.
+  - Notes: Reduced from 905 lines to 436 lines (< 500 target). Extracted: src/lib/formatUtils.ts (formatCurrency, formatDate, getStatusColor, getStatusLabel); src/components/overview/PhotosAccordion.tsx (all photo state, handlers, grid JSX, PhotoOptionsModal). Stats row refactored to data-driven array. No functional changes.
 
 ---
 
