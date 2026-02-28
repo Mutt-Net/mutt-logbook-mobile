@@ -1,4 +1,4 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   VehicleService,
   MaintenanceService,
@@ -18,6 +18,8 @@ import { addWifiListener, removeWifiListener } from './wifi';
 import { logger } from '../lib/logger';
 
 const LAST_SYNC_KEY = 'last_sync_timestamp';
+const SYNC_ERRORS_KEY = 'sync_errors';
+const MAX_ERROR_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface SyncResult {
   success: boolean;
@@ -73,6 +75,62 @@ const setLastSyncTimestamp = async (timestamp: string): Promise<void> => {
     logger.warn('Failed to save last sync timestamp', { error });
   }
 };
+const getSyncErrors = async (): Promise<string[]> => {
+  try {
+    const errorsJson = await AsyncStorage.getItem(SYNC_ERRORS_KEY);
+    if (!errorsJson) return [];
+    
+    const parsed = JSON.parse(errorsJson);
+    if (!parsed || !Array.isArray(parsed.errors)) return [];
+    
+    return parsed.errors;
+  } catch {
+    return [];
+  }
+};
+
+const setSyncErrors = async (errors: string[]): Promise<void> => {
+  try {
+    const timestamp = new Date().toISOString();
+    const errorData = { errors, timestamp };
+    await AsyncStorage.setItem(SYNC_ERRORS_KEY, JSON.stringify(errorData));
+  } catch (error) {
+    logger.warn('Failed to save sync errors', { error });
+  }
+};
+
+const clearSyncErrors = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(SYNC_ERRORS_KEY);
+  } catch (error) {
+    logger.warn('Failed to clear sync errors', { error });
+  }
+};
+
+const getSyncErrorInfo = async (): Promise<{ errors: string[]; timestamp: string | null }> => {
+  try {
+    const errorsJson = await AsyncStorage.getItem(SYNC_ERRORS_KEY);
+    if (!errorsJson) return { errors: [], timestamp: null };
+    
+    const parsed = JSON.parse(errorsJson);
+    if (!parsed || !Array.isArray(parsed.errors)) return { errors: [], timestamp: null };
+    
+    // Check if errors are stale (older than 24 hours)
+    if (parsed.timestamp) {
+      const errorTime = new Date(parsed.timestamp).getTime();
+      const now = Date.now();
+      if (now - errorTime > MAX_ERROR_AGE_MS) {
+        await clearSyncErrors();
+        return { errors: [], timestamp: null };
+      }
+    }
+    
+    return { errors: parsed.errors, timestamp: parsed.timestamp || null };
+  } catch {
+    return { errors: [], timestamp: null };
+  }
+};
+
 
 /**
  * Compare two timestamps and return which is newer.
@@ -128,6 +186,19 @@ class SyncManager {
     return SyncManager.instance;
   }
 
+  async getSyncErrors(): Promise<string[]> {
+    return await getSyncErrors();
+  }
+
+  async getSyncErrorInfo(): Promise<{ errors: string[]; timestamp: string | null }> {
+    return await getSyncErrorInfo();
+  }
+
+  async clearSyncErrors(): Promise<void> {
+    await clearSyncErrors();
+  }
+
+
   startAutoSync(): void {
     if (this.isAutoSyncEnabled) return;
 
@@ -137,7 +208,9 @@ class SyncManager {
         try {
           await this.syncAll();
         } catch (error) {
-          logger.warn('Auto-sync failed', { error });
+          const errorMsg = error instanceof Error ? error.message : 'Auto-sync failed';
+          logger.warn('Auto-sync failed', { error: errorMsg });
+          await setSyncErrors([errorMsg]);
         }
       }
     });
@@ -194,7 +267,10 @@ class SyncManager {
       await setLastSyncTimestamp(result.timestamp);
     } catch (error) {
       result.success = false;
-      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      result.errors.push(errorMessage);
+      await setSyncErrors(result.errors);
+      logger.error('Sync failed', { errors: result.errors });
     } finally {
       this.isSyncing = false;
     }
@@ -1027,3 +1103,4 @@ class SyncManager {
 
 export const syncManager = SyncManager.getInstance();
 export default syncManager;
+

@@ -47,7 +47,7 @@ const getApiInstance = async (): Promise<AxiosInstance> => {
     },
   });
 
-  apiInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  apiInstance.interceptors.request.use((config: AxiosRequestConfig) => {
     return config;
   });
 
