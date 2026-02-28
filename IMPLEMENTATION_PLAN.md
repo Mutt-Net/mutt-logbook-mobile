@@ -164,10 +164,10 @@
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Fuel economy analytics")
   - Notes: LineChart added to FuelScreen (react-native-gifted-charts) showing per-fillup MPG over the last 12 fill-ups. Chart appears between summary card and list. Requires 2+ fill-ups with mileage and gallons data.
 
-- [ ] **P3-04**: Add cost analytics and charts
+- [x] **P3-04**: Add cost analytics and charts
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Activity: log-maintenance - Advanced: "cost analytics")
-  - Required tests: Spending trends visible
-  - Notes: CostsScreen has category summary but no charts. Need chart library (react-native-chart-kit or similar).
+  - Notes: BarChart added to CostsScreen summary card using react-native-gifted-charts. Shows spending per category with color-coded bars matching category colors. Only categories with spend > $0 shown. Existing text summary preserved below chart.
 
 - [x] **P3-05**: Improve error messages and user feedback
   - Completed: 2026-02-28

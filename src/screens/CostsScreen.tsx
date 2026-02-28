@@ -9,11 +9,15 @@ import {
   Modal,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
+import { BarChart } from 'react-native-gifted-charts';
 import { CostService, VehicleService } from '../services/database';
 import { Cost, Vehicle, WithSyncStatus } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
 import { Card, Input, Loading, EmptyState, SyncStatusBadge } from '../components/common';
+
+const CHART_WIDTH = Dimensions.get('window').width - 64;
 
 const COST_CATEGORIES = [
   { value: 'maintenance', label: 'Maintenance' },
@@ -224,11 +228,39 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
   const categoryTotals = calculateCategoryTotals();
   const grandTotal = costs.reduce((sum, c) => sum + (c.amount || 0), 0);
 
+  const buildBarData = () =>
+    COST_CATEGORIES
+      .filter(cat => categoryTotals[cat.value] > 0)
+      .map(cat => ({
+        value: parseFloat(categoryTotals[cat.value].toFixed(2)),
+        label: cat.label.substring(0, 5),
+        frontColor: getCategoryColor(cat.value),
+      }));
+
+  const barData = buildBarData();
+
   const renderSummaryCard = () => (
     <Card style={styles.summaryCard}>
-      <Text style={styles.summaryTitle}>Total by Category</Text>
+      <Text style={styles.summaryTitle}>Spending by Category</Text>
+      {barData.length > 0 ? (
+        <BarChart
+          data={barData}
+          width={CHART_WIDTH}
+          height={140}
+          barWidth={Math.min(40, (CHART_WIDTH / barData.length) - 16)}
+          spacing={16}
+          noOfSections={4}
+          barBorderRadius={4}
+          yAxisTextStyle={{ color: '#8E8E93', fontSize: 10 }}
+          xAxisLabelTextStyle={{ color: '#8E8E93', fontSize: 10 }}
+          hideRules={false}
+          rulesColor="#2C2C2E"
+          isAnimated
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
       <View style={styles.summaryGrid}>
-        {COST_CATEGORIES.map(cat => (
+        {COST_CATEGORIES.filter(cat => categoryTotals[cat.value] > 0).map(cat => (
           <View key={cat.value} style={styles.summaryRow}>
             <View style={[styles.categoryDot, { backgroundColor: getCategoryColor(cat.value) }]} />
             <Text style={styles.summaryLabel}>{cat.label}</Text>
