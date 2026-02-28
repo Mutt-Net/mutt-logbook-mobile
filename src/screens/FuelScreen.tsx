@@ -9,11 +9,15 @@ import {
   Modal,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
+import { LineChart } from 'react-native-gifted-charts';
 import { FuelEntryService, VehicleService } from '../services/database';
 import { FuelEntry, Vehicle, WithSyncStatus } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
 import { Card, Input, Loading, EmptyState, SyncStatusBadge } from '../components/common';
+
+const CHART_WIDTH = Dimensions.get('window').width - 64;
 
 interface FuelFormData {
   date: string;
@@ -223,21 +227,66 @@ export default function FuelScreen({ vehicleId }: FuelScreenProps) {
 
   const { totalCost, avgMpg } = calculateSummary();
 
+  const buildMpgChartData = () => {
+    const sorted = [...fuelEntries]
+      .filter(e => e.mileage && e.gallons)
+      .sort((a, b) => (a.mileage ?? 0) - (b.mileage ?? 0));
+
+    const points: { value: number; label?: string }[] = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const miles = (sorted[i].mileage ?? 0) - (sorted[i - 1].mileage ?? 0);
+      const gallons = sorted[i].gallons ?? 0;
+      if (miles > 0 && gallons > 0) {
+        const mpg = miles / gallons;
+        const label = sorted[i].date ? sorted[i].date!.slice(5) : `#${i}`;
+        points.push({ value: parseFloat(mpg.toFixed(1)), label: i % 3 === 0 ? label : '' });
+      }
+    }
+    return points.slice(-12); // last 12 fill-ups
+  };
+
+  const mpgChartData = buildMpgChartData();
+
   const renderSummaryCard = () => (
-    <Card style={styles.summaryCard}>
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Total Spent</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(totalCost)}</Text>
+    <>
+      <Card style={styles.summaryCard}>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Total Spent</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(totalCost)}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Avg MPG</Text>
+            <Text style={styles.summaryValue}>
+              {avgMpg > 0 ? avgMpg.toFixed(1) : '-'}
+            </Text>
+          </View>
         </View>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Avg MPG</Text>
-          <Text style={styles.summaryValue}>
-            {avgMpg > 0 ? avgMpg.toFixed(1) : '-'}
-          </Text>
-        </View>
-      </View>
-    </Card>
+      </Card>
+
+      {mpgChartData.length >= 2 && (
+        <Card style={styles.chartCard}>
+          <Text style={styles.chartTitle}>MPG Trend</Text>
+          <Text style={styles.chartSubtitle}>Last {mpgChartData.length} fill-ups</Text>
+          <LineChart
+            data={mpgChartData}
+            width={CHART_WIDTH}
+            height={140}
+            color="#30D158"
+            thickness={2}
+            dataPointsColor="#30D158"
+            dataPointsRadius={4}
+            noOfSections={4}
+            yAxisTextStyle={{ color: '#8E8E93', fontSize: 10 }}
+            xAxisLabelTextStyle={{ color: '#8E8E93', fontSize: 10 }}
+            hideRules={false}
+            rulesColor="#2C2C2E"
+            isAnimated
+            curved
+          />
+        </Card>
+      )}
+    </>
   );
 
   const renderItem = ({ item }: { item: FuelEntry }) => (
@@ -458,6 +507,20 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     marginBottom: 16,
+  },
+  chartCard: {
+    marginBottom: 16,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  chartSubtitle: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 12,
   },
   summaryRow: {
     flexDirection: 'row',

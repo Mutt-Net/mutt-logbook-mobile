@@ -159,10 +159,10 @@
   - Required tests: Notification fires when due
   - Notes: Need expo-notifications. RemindersScreen has next_due_date/mileage but no notification logic.
 
-- [ ] **P3-03**: Implement fuel economy analytics visualization
+- [x] **P3-03**: Implement fuel economy analytics visualization
+  - Completed: 2026-02-28
   - Spec: `PROJECT_SPEC.md` (Future Considerations - "Fuel economy analytics")
-  - Required tests: MPG calculated, displayed over time
-  - Notes: FuelScreen calculates avgMpg but doesn't visualize trends. Need chart library.
+  - Notes: LineChart added to FuelScreen (react-native-gifted-charts) showing per-fillup MPG over the last 12 fill-ups. Chart appears between summary card and list. Requires 2+ fill-ups with mileage and gallons data.
 
 - [ ] **P3-04**: Add cost analytics and charts
   - Spec: `PROJECT_SPEC.md` (Activity: log-maintenance - Advanced: "cost analytics")
