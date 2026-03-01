@@ -74,6 +74,10 @@ jobs:
           CLEAN_PASS=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n')
           CLEAN_ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d '\r\n')
           CLEAN_KEY_PASS=$(printf '%s' "$KEY_PASSWORD" | tr -d '\r\n')
+          echo "Keystore size: $(wc -c < mutt-logbook.keystore) bytes"
+          echo "Password length: ${#CLEAN_PASS}"
+          echo "Alias length: ${#CLEAN_ALIAS}"
+          keytool -list -keystore mutt-logbook.keystore -storepass "$CLEAN_PASS" -storetype JKS -v 2>&1 | head -20
           APKSIGNER="${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)/apksigner"
           "$APKSIGNER" sign \
             --ks mutt-logbook.keystore \
