@@ -69,13 +69,20 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          printf '%s' "$KEYSTORE_BASE64" | tr -d '\r' | base64 --decode > android/app/mutt-logbook.keystore
-          keytool -list -keystore android/app/mutt-logbook.keystore -storepass "$KEYSTORE_PASSWORD" 2>&1 || echo "KEYSTORE VALIDATION FAILED"
+          python3 -c "
+          import base64, os, sys
+          data = base64.b64decode(os.environ['KEYSTORE_BASE64'].strip())
+          sys.stdout.buffer.write(data)
+          " > android/app/mutt-logbook.keystore
+          CLEAN_PASS=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n')
+          CLEAN_ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d '\r\n')
+          CLEAN_KEY_PASS=$(printf '%s' "$KEY_PASSWORD" | tr -d '\r\n')
+          keytool -list -keystore android/app/mutt-logbook.keystore -storepass "$CLEAN_PASS" 2>&1 || echo "KEYSTORE VALIDATION FAILED"
           {
-            echo "MYAPP_UPLOAD_STORE_FILE=mutt-logbook.keystore"
-            echo "MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD"
-            echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
-            echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD"
+            printf 'MYAPP_UPLOAD_STORE_FILE=mutt-logbook.keystore\n'
+            printf 'MYAPP_UPLOAD_STORE_PASSWORD=%s\n' "$CLEAN_PASS"
+            printf 'MYAPP_UPLOAD_KEY_ALIAS=%s\n' "$CLEAN_ALIAS"
+            printf 'MYAPP_UPLOAD_KEY_PASSWORD=%s\n' "$CLEAN_KEY_PASS"
           } >> android/gradle.properties
 
       - name: Build release APK
