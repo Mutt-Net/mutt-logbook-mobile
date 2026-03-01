@@ -10,6 +10,7 @@ android/
 android/app/build/
 *.jks
 *.keystore
+!mutt-logbook.keystore
 
 # iOS
 ios/

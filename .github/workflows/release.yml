@@ -64,20 +64,14 @@ jobs:
 
       - name: Setup release signing
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          python3 -c "
-          import base64, os, sys
-          data = base64.b64decode(os.environ['KEYSTORE_BASE64'].strip())
-          sys.stdout.buffer.write(data)
-          " > android/app/mutt-logbook.keystore
+          cp mutt-logbook.keystore android/app/mutt-logbook.keystore
           CLEAN_PASS=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n')
           CLEAN_ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d '\r\n')
           CLEAN_KEY_PASS=$(printf '%s' "$KEY_PASSWORD" | tr -d '\r\n')
-          keytool -list -keystore android/app/mutt-logbook.keystore -storepass "$CLEAN_PASS" 2>&1 || echo "KEYSTORE VALIDATION FAILED"
           {
             printf 'MYAPP_UPLOAD_STORE_FILE=mutt-logbook.keystore\n'
             printf 'MYAPP_UPLOAD_STORE_PASSWORD=%s\n' "$CLEAN_PASS"
