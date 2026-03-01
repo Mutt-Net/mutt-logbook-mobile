@@ -69,7 +69,8 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/mutt-logbook.keystore
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '\r' | base64 --decode > android/app/mutt-logbook.keystore
+          keytool -list -keystore android/app/mutt-logbook.keystore -storepass "$KEYSTORE_PASSWORD" 2>&1 || echo "KEYSTORE VALIDATION FAILED"
           {
             echo "MYAPP_UPLOAD_STORE_FILE=mutt-logbook.keystore"
             echo "MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD"
