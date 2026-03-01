@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { NoteService, VehicleService } from '../services/database';
 import { Note, Vehicle, WithSyncStatus } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
@@ -29,11 +30,9 @@ const initialFormData: NoteFormData = {
   tags: '',
 };
 
-interface NotesScreenProps {
-  vehicleId: number;
-}
-
-export default function NotesScreen({ vehicleId }: NotesScreenProps) {
+export default function NotesScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [notes, setNotes] = useState<Note[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);

@@ -11,6 +11,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { LineChart } from 'react-native-gifted-charts';
 import { FuelEntryService, VehicleService } from '../services/database';
 import { FuelEntry, Vehicle, WithSyncStatus } from '../types';
@@ -39,11 +40,9 @@ const initialFormData: FuelFormData = {
   notes: '',
 };
 
-interface FuelScreenProps {
-  vehicleId: number;
-}
-
-export default function FuelScreen({ vehicleId }: FuelScreenProps) {
+export default function FuelScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);

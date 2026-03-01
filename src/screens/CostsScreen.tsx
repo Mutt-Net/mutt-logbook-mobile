@@ -11,6 +11,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { BarChart } from 'react-native-gifted-charts';
 import { CostService, VehicleService } from '../services/database';
 import { Cost, Vehicle, WithSyncStatus } from '../types';
@@ -42,11 +43,9 @@ const initialFormData: CostFormData = {
   description: '',
 };
 
-interface CostsScreenProps {
-  vehicleId: number;
-}
-
-export default function CostsScreen({ vehicleId }: CostsScreenProps) {
+export default function CostsScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [costs, setCosts] = useState<Cost[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -243,21 +242,22 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
     <Card style={styles.summaryCard}>
       <Text style={styles.summaryTitle}>Spending by Category</Text>
       {barData.length > 0 ? (
-        <BarChart
-          data={barData}
-          width={CHART_WIDTH}
-          height={140}
-          barWidth={Math.min(40, (CHART_WIDTH / barData.length) - 16)}
-          spacing={16}
-          noOfSections={4}
-          barBorderRadius={4}
-          yAxisTextStyle={{ color: '#8E8E93', fontSize: 10 }}
-          xAxisLabelTextStyle={{ color: '#8E8E93', fontSize: 10 }}
-          hideRules={false}
-          rulesColor="#2C2C2E"
-          isAnimated
-          style={{ marginBottom: 16 }}
-        />
+        <View style={{ marginBottom: 16 }}>
+          <BarChart
+            data={barData}
+            width={CHART_WIDTH}
+            height={140}
+            barWidth={Math.min(40, (CHART_WIDTH / barData.length) - 16)}
+            spacing={16}
+            noOfSections={4}
+            barBorderRadius={4}
+            yAxisTextStyle={{ color: '#8E8E93', fontSize: 10 }}
+            xAxisLabelTextStyle={{ color: '#8E8E93', fontSize: 10 }}
+            hideRules={false}
+            rulesColor="#2C2C2E"
+            isAnimated
+          />
+        </View>
       ) : null}
       <View style={styles.summaryGrid}>
         {COST_CATEGORIES.filter(cat => categoryTotals[cat.value] > 0).map(cat => (
@@ -278,7 +278,7 @@ export default function CostsScreen({ vehicleId }: CostsScreenProps) {
   const renderItem = ({ item }: { item: Cost }) => (
     <Card>
       <View style={styles.itemHeader}>
-        <SyncStatusBadge isSynced={!isUnsynced(item)} size="small" />
+        <SyncStatusBadge isSynced={!isUnsynced(item as unknown as { synced: number })} size="small" />
         <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
           <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
         </View>

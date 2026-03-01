@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { ModService, VehicleService } from '../services/database';
 import { Mod, Vehicle, WithSyncStatus } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
@@ -57,11 +58,9 @@ const initialFormData: ModFormData = {
   notes: '',
 };
 
-interface ModsScreenProps {
-  vehicleId: number;
-}
-
-export default function ModsScreen({ vehicleId }: ModsScreenProps) {
+export default function ModsScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [mods, setMods] = useState<Mod[]>([]);
   const [filteredMods, setFilteredMods] = useState<Mod[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
@@ -271,7 +270,7 @@ export default function ModsScreen({ vehicleId }: ModsScreenProps) {
     <Card>
       <View style={styles.itemHeader}>
         <View style={styles.itemHeaderLeft}>
-          <SyncStatusBadge isSynced={!isUnsynced(item)} size="small" />
+          <SyncStatusBadge isSynced={!isUnsynced(item as unknown as { synced: number })} size="small" />
           <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
             <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
           </View>

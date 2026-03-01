@@ -11,6 +11,7 @@ import {
   Alert,
   Switch,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { GuideService, VehicleService } from '../services/database';
 import { Guide, Vehicle } from '../types';
 import { Card, Button, Input, Loading, EmptyState } from '../components/common';
@@ -43,11 +44,9 @@ const initialFormData: GuideFormData = {
 
 type FilterType = 'all' | 'templates' | 'vehicle';
 
-interface GuidesScreenProps {
-  vehicleId: number;
-}
-
-export default function GuidesScreen({ vehicleId }: GuidesScreenProps) {
+export default function GuidesScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [guides, setGuides] = useState<Guide[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);

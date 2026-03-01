@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { DocumentService, VehicleService } from '../services/database';
 import { Document, Vehicle } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
@@ -36,11 +37,9 @@ const initialFormData: DocumentFormData = {
   document_type: 'other',
 };
 
-interface DocumentsScreenProps {
-  vehicleId: number;
-}
-
-export default function DocumentsScreen({ vehicleId }: DocumentsScreenProps) {
+export default function DocumentsScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [documents, setDocuments] = useState<Document[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,6 +122,7 @@ export default function DocumentsScreen({ vehicleId }: DocumentsScreenProps) {
         description: formData.description.trim() || null,
         document_type: formData.document_type || null,
         filename: null,
+        created_at: new Date().toISOString(),
         synced: 0,
         remote_id: null,
         updated_at: new Date().toISOString(),

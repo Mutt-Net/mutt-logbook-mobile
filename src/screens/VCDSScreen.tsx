@@ -11,6 +11,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { VCDSFaultService, VehicleService } from '../services/database';
 import { VCDSFault, Vehicle } from '../types';
 import apiService from '../services/api';
@@ -42,11 +43,9 @@ const initialFormData: VCDSFormData = {
   status: 'active',
 };
 
-interface VCDSScreenProps {
-  vehicleId: number;
-}
-
-export default function VCDSScreen({ vehicleId }: VCDSScreenProps) {
+export default function VCDSScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [faults, setFaults] = useState<VCDSFault[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);

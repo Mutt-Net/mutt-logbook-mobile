@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
-import { SyncService,
+import {
   View,
   Text,
   StyleSheet,
@@ -8,15 +8,15 @@ import { SyncService,
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-import { SyncService,
+import {
   VehicleService,
   MaintenanceService,
   ModService,
   CostService,
   VCDSFaultService,
 } from '../services/database';
-import { SyncService, Vehicle, Maintenance, Mod, Cost, VCDSFault } from '../types';
-import { SyncService, Card, Loading, EmptyState, SyncStatusBadge } from '../components/common';
+import { Vehicle, Maintenance, Mod, Cost, VCDSFault } from '../types';
+import { Card, Loading, EmptyState, SyncStatusBadge } from '../components/common';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { DashboardStackScreenProps } from '../navigation/types';
 
@@ -262,7 +262,7 @@ export default function DashboardScreen({ navigation }: DashboardStackScreenProp
           <Text style={styles.statValue}>{stats.costsCount}</Text>
           <Text style={styles.statLabel}>Costs</Text>
         </Card>
-        <Card style={[styles.statCard, stats.activeFaultsCount > 0 && styles.faultCard]}>
+        <Card style={StyleSheet.flatten([styles.statCard, stats.activeFaultsCount > 0 && styles.faultCard])}>
           <Text style={[styles.statValue, stats.activeFaultsCount > 0 && styles.faultValue]}>
             {stats.activeFaultsCount}
           </Text>

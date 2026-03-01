@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { MaintenanceService, VehicleService } from '../services/database';
 import { Maintenance, Vehicle, WithSyncStatus } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
@@ -51,11 +52,9 @@ const initialFormData: MaintenanceFormData = {
   labor_hours: '',
 };
 
-interface MaintenanceScreenProps {
-  vehicleId: number;
-}
-
-export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps) {
+export default function MaintenanceScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [maintenance, setMaintenance] = useState<Maintenance[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -233,7 +232,7 @@ export default function MaintenanceScreen({ vehicleId }: MaintenanceScreenProps)
     <Card>
       <View style={styles.itemHeader}>
         <View style={styles.syncStatusContainer}>
-          <SyncStatusBadge isSynced={!isUnsynced(item)} size="small" />
+          <SyncStatusBadge isSynced={!isUnsynced(item as unknown as { synced: number })} size="small" />
         </View>
         <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
           <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>

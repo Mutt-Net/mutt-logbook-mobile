@@ -39,7 +39,9 @@ export const initDatabase = async (): Promise<void> => {
       engine TEXT,
       transmission TEXT,
       mileage INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER
     );
 
@@ -55,7 +57,9 @@ export const initDatabase = async (): Promise<void> => {
       cost REAL,
       shop_name TEXT,
       notes TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -71,7 +75,9 @@ export const initDatabase = async (): Promise<void> => {
       cost REAL,
       status TEXT NOT NULL DEFAULT 'planned',
       notes TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -83,7 +89,9 @@ export const initDatabase = async (): Promise<void> => {
       category TEXT,
       amount REAL,
       description TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -95,7 +103,9 @@ export const initDatabase = async (): Promise<void> => {
       title TEXT,
       content TEXT,
       tags TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -111,7 +121,9 @@ export const initDatabase = async (): Promise<void> => {
       detected_date TEXT,
       cleared_date TEXT,
       notes TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -125,7 +137,9 @@ export const initDatabase = async (): Promise<void> => {
       interval_miles INTEGER,
       interval_months INTEGER,
       is_template INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -136,7 +150,9 @@ export const initDatabase = async (): Promise<void> => {
       filename TEXT,
       caption TEXT,
       is_primary INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -151,7 +167,9 @@ export const initDatabase = async (): Promise<void> => {
       total_cost REAL,
       station TEXT,
       notes TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -167,7 +185,9 @@ export const initDatabase = async (): Promise<void> => {
       next_due_date TEXT,
       next_due_mileage INTEGER,
       notes TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -182,7 +202,9 @@ export const initDatabase = async (): Promise<void> => {
       category TEXT,
       notes TEXT,
       filename TEXT,
-      created_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -195,7 +217,9 @@ export const initDatabase = async (): Promise<void> => {
       description TEXT,
       document_type TEXT,
       filename TEXT,
-      uploaded_at TEXT NOT NULL,`r`n      updated_at TEXT,`r`n      synced INTEGER NOT NULL DEFAULT 0,
+      uploaded_at TEXT NOT NULL,
+      updated_at TEXT,
+      synced INTEGER NOT NULL DEFAULT 0,
       remote_id INTEGER,
       FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
     );
@@ -272,7 +296,7 @@ export const VehicleService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(vehicle).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -305,7 +329,7 @@ export const VehicleService = {
       'SELECT * FROM vehicles WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Vehicle : null;
   },
   async getUnsynced(): Promise<Vehicle[]> {
     const database = await getDatabase();
@@ -382,7 +406,7 @@ export const MaintenanceService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(maintenance).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -415,7 +439,7 @@ export const MaintenanceService = {
       'SELECT * FROM maintenance WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Maintenance : null;
   },
   async getUnsynced(): Promise<Maintenance[]> {
     const database = await getDatabase();
@@ -486,7 +510,7 @@ export const ModService = {
   async update(id: number, mod: Partial<Omit<Mod, 'id' | 'created_at'>>): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(mod).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -519,7 +543,7 @@ export const ModService = {
       'SELECT * FROM mods WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Mod : null;
   },
   async getUnsynced(): Promise<Mod[]> {
     const database = await getDatabase();
@@ -589,7 +613,7 @@ export const CostService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(cost).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -622,7 +646,7 @@ export const CostService = {
       'SELECT * FROM costs WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Cost : null;
   },
   async getUnsynced(): Promise<Cost[]> {
     const database = await getDatabase();
@@ -689,7 +713,7 @@ export const NoteService = {
   async update(id: number, note: Partial<Omit<Note, 'id' | 'created_at'>>): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(note).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -722,7 +746,7 @@ export const NoteService = {
       'SELECT * FROM notes WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Note : null;
   },
   async getUnsynced(): Promise<Note[]> {
     const database = await getDatabase();
@@ -796,7 +820,7 @@ export const VCDSFaultService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(fault).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -829,7 +853,7 @@ export const VCDSFaultService = {
       'SELECT * FROM vcds_faults WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as VCDSFault : null;
   },
   async getUnsynced(): Promise<VCDSFault[]> {
     const database = await getDatabase();
@@ -877,7 +901,7 @@ export const GuideService = {
     return rows.map(row => ({
       ...mapSynced(row),
       is_template: row.is_template === 1,
-    })) as unknown as Guide;
+    })) as unknown as Guide[];
   },
 
   async getById(id: number): Promise<Guide | null> {
@@ -902,7 +926,7 @@ export const GuideService = {
     return rows.map(row => ({
       ...mapSynced(row),
       is_template: row.is_template === 1,
-    })) as unknown as Guide;
+    })) as unknown as Guide[];
   },
 
   async getTemplates(): Promise<Guide[]> {
@@ -913,7 +937,7 @@ export const GuideService = {
     return rows.map(row => ({
       ...mapSynced(row),
       is_template: true,
-    })) as unknown as Guide;
+    })) as unknown as Guide[];
   },
 
   async update(
@@ -922,7 +946,7 @@ export const GuideService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(guide).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -931,7 +955,7 @@ export const GuideService = {
           values.push(value ? 1 : 0);
         } else {
           fields.push(`${key} = ?`);
-          values.push(value);
+          values.push(value as string | number | null);
         }
       }
     });
@@ -960,7 +984,7 @@ export const GuideService = {
       'SELECT * FROM guides WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Guide : null;
   },
   async getUnsynced(): Promise<Guide[]> {
     const database = await getDatabase();
@@ -970,7 +994,7 @@ export const GuideService = {
     return rows.map(row => ({
       ...mapSynced(row),
       is_template: row.is_template === 1,
-    })) as unknown as Guide;
+    })) as unknown as Guide[];
   },
 
   async markSynced(id: number, remoteId: number): Promise<void> {
@@ -1008,7 +1032,7 @@ export const VehiclePhotoService = {
     return rows.map(row => ({
       ...mapSynced(row),
       is_primary: row.is_primary === 1,
-    })) as unknown as VehiclePhoto;
+    })) as unknown as VehiclePhoto[];
   },
 
   async getById(id: number): Promise<VehiclePhoto | null> {
@@ -1033,7 +1057,7 @@ export const VehiclePhotoService = {
     return rows.map(row => ({
       ...mapSynced(row),
       is_primary: row.is_primary === 1,
-    })) as unknown as VehiclePhoto;
+    })) as unknown as VehiclePhoto[];
   },
 
   async getPrimaryByVehicle(vehicleId: number): Promise<VehiclePhoto | null> {
@@ -1055,7 +1079,7 @@ export const VehiclePhotoService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(photo).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -1064,7 +1088,7 @@ export const VehiclePhotoService = {
           values.push(value ? 1 : 0);
         } else {
           fields.push(`${key} = ?`);
-          values.push(value);
+          values.push(value as string | number | null);
         }
       }
     });
@@ -1105,7 +1129,7 @@ export const VehiclePhotoService = {
       'SELECT * FROM vehicle_photos WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as VehiclePhoto : null;
   },
   async getUnsynced(): Promise<VehiclePhoto[]> {
     const database = await getDatabase();
@@ -1115,7 +1139,7 @@ export const VehiclePhotoService = {
     return rows.map(row => ({
       ...mapSynced(row),
       is_primary: row.is_primary === 1,
-    })) as unknown as VehiclePhoto;
+    })) as unknown as VehiclePhoto[];
   },
 
   async markSynced(id: number, remoteId: number): Promise<void> {
@@ -1181,7 +1205,7 @@ export const FuelEntryService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(entry).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -1214,7 +1238,7 @@ export const FuelEntryService = {
       'SELECT * FROM fuel_entries WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as FuelEntry : null;
   },
   async getUnsynced(): Promise<FuelEntry[]> {
     const database = await getDatabase();
@@ -1288,7 +1312,7 @@ export const ReminderService = {
   ): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(reminder).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -1321,7 +1345,7 @@ export const ReminderService = {
       'SELECT * FROM reminders WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Reminder : null;
   },
   async getUnsynced(): Promise<Reminder[]> {
     const database = await getDatabase();
@@ -1391,7 +1415,7 @@ export const ReceiptService = {
   async update(id: number, receipt: Partial<Omit<Receipt, 'id' | 'created_at'>>): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(receipt).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -1424,7 +1448,7 @@ export const ReceiptService = {
       'SELECT * FROM receipts WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Receipt : null;
   },
   async getUnsynced(): Promise<Receipt[]> {
     const database = await getDatabase();
@@ -1498,7 +1522,7 @@ export const DocumentService = {
   async update(id: number, doc: Partial<Omit<Document, 'id' | 'uploaded_at'>>): Promise<void> {
     const database = await getDatabase();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
 
     Object.entries(doc).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -1526,7 +1550,7 @@ export const DocumentService = {
       'SELECT * FROM documents WHERE remote_id = ?',
       [remoteId]
     );
-    return row ? mapSynced(row) : null;
+    return row ? mapSynced(row) as unknown as Document : null;
   },
   async getUnsynced(): Promise<Document[]> {
     const database = await getDatabase();

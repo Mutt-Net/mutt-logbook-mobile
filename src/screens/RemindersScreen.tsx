@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { ReminderService, VehicleService } from '../services/database';
 import { Reminder, Vehicle, WithSyncStatus } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
@@ -50,11 +51,9 @@ const initialFormData: ReminderFormData = {
   notes: '',
 };
 
-interface RemindersScreenProps {
-  vehicleId: number;
-}
-
-export default function RemindersScreen({ vehicleId }: RemindersScreenProps) {
+export default function RemindersScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);

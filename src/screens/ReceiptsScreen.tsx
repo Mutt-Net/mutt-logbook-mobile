@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { ReceiptService, VehicleService } from '../services/database';
 import { Receipt, Vehicle } from '../types';
 import { isUnsynced } from '../lib/syncUtils';
@@ -40,11 +41,9 @@ const initialFormData: ReceiptFormData = {
   notes: '',
 };
 
-interface ReceiptsScreenProps {
-  vehicleId: number;
-}
-
-export default function ReceiptsScreen({ vehicleId }: ReceiptsScreenProps) {
+export default function ReceiptsScreen() {
+  const route = useRoute<RouteProp<{ Screen: { vehicleId?: number } }, 'Screen'>>();
+  const vehicleId = route.params?.vehicleId ?? 0;
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);

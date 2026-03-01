@@ -254,15 +254,12 @@ export default function SettingsScreen() {
         name: `${v.name} (Imported)`,
         make: v.make,
         model: v.model,
-        year: v.year,
-        vin: v.vin,
-        color: v.color,
-        mileage: v.mileage,
-        license_plate: v.license_plate,
-        notes: v.notes,
-        synced: 0,
-        remote_id: null,
-        updated_at: new Date().toISOString(),
+        reg: v.reg ?? v.license_plate ?? null,
+        year: v.year ?? null,
+        vin: v.vin ?? null,
+        engine: v.engine ?? null,
+        transmission: v.transmission ?? null,
+        mileage: v.mileage ?? 0,
       });
       let count = 1;
       for (const r of maintenance) {

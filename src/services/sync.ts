@@ -325,7 +325,7 @@ class SyncManager {
         } else {
           // Conflict: compare timestamps
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             // Remote is newer, update local
@@ -402,7 +402,7 @@ class SyncManager {
           result.pulled.maintenance++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await MaintenanceService.update(existing.id, {
@@ -476,7 +476,7 @@ class SyncManager {
           result.pulled.mods++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await ModService.update(existing.id, {
@@ -541,7 +541,7 @@ class SyncManager {
           result.pulled.costs++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await CostService.update(existing.id, {
@@ -602,7 +602,7 @@ class SyncManager {
           result.pulled.notes++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await NoteService.update(existing.id, {
@@ -634,14 +634,14 @@ class SyncManager {
         try {
           const created = await apiService.vcds.create({
             vehicle_id: fault.vehicle_id,
-            address: fault.address || undefined,
-            component: fault.component || undefined,
-            fault_code: fault.fault_code || undefined,
-            description: fault.description || undefined,
+            address: fault.address ?? null,
+            component: fault.component ?? null,
+            fault_code: fault.fault_code ?? null,
+            description: fault.description ?? null,
             status: fault.status || 'active',
-            detected_date: fault.detected_date || undefined,
-            cleared_date: fault.cleared_date || undefined,
-            notes: fault.notes || undefined,
+            detected_date: fault.detected_date ?? null,
+            cleared_date: fault.cleared_date ?? null,
+            notes: fault.notes ?? null,
           });
           await VCDSFaultService.markSynced(fault.id, created.id);
           result.pushed.vcds++;
@@ -671,7 +671,7 @@ class SyncManager {
           result.pulled.vcds++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await VCDSFaultService.update(existing.id, {
@@ -706,12 +706,12 @@ class SyncManager {
       for (const guide of unsynced) {
         try {
           const created = await apiService.guides.create({
-            vehicle_id: guide.vehicle_id || undefined,
+            vehicle_id: guide.vehicle_id ?? null,
             title: guide.title,
-            category: guide.category || undefined,
-            content: guide.content || undefined,
-            interval_miles: guide.interval_miles || undefined,
-            interval_months: guide.interval_months || undefined,
+            category: guide.category ?? null,
+            content: guide.content ?? null,
+            interval_miles: guide.interval_miles ?? null,
+            interval_months: guide.interval_months ?? null,
             is_template: guide.is_template,
           });
           await GuideService.markSynced(guide.id, created.id);
@@ -740,7 +740,7 @@ class SyncManager {
           result.pulled.guides++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await GuideService.update(existing.id, {
@@ -802,7 +802,7 @@ class SyncManager {
           result.pulled.photos++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await VehiclePhotoService.update(existing.id, {
@@ -868,7 +868,7 @@ class SyncManager {
           result.pulled.fuel++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await FuelEntryService.update(existing.id, {
@@ -904,13 +904,13 @@ class SyncManager {
           const created = await apiService.reminders.create({
             vehicle_id: reminder.vehicle_id,
             type: reminder.type,
-            interval_miles: reminder.interval_miles || undefined,
-            interval_months: reminder.interval_months || undefined,
-            last_service_date: reminder.last_service_date || undefined,
-            last_service_mileage: reminder.last_service_mileage || undefined,
-            next_due_date: reminder.next_due_date || undefined,
-            next_due_mileage: reminder.next_due_mileage || undefined,
-            notes: reminder.notes || undefined,
+            interval_miles: reminder.interval_miles ?? null,
+            interval_months: reminder.interval_months ?? null,
+            last_service_date: reminder.last_service_date ?? null,
+            last_service_mileage: reminder.last_service_mileage ?? null,
+            next_due_date: reminder.next_due_date ?? null,
+            next_due_mileage: reminder.next_due_mileage ?? null,
+            notes: reminder.notes ?? null,
           });
           await ReminderService.markSynced(reminder.id, created.id);
           result.pushed.reminders++;
@@ -940,7 +940,7 @@ class SyncManager {
           result.pulled.reminders++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await ReminderService.update(existing.id, {
@@ -1010,7 +1010,7 @@ class SyncManager {
           result.pulled.receipts++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await ReceiptService.update(existing.id, {
@@ -1043,13 +1043,13 @@ class SyncManager {
       const unsynced = await DocumentService.getUnsynced();
       for (const doc of unsynced) {
         try {
-          const created = await apiService.documents.create({
-            vehicle_id: doc.vehicle_id,
-            maintenance_id: doc.maintenance_id || undefined,
-            title: doc.title,
-            description: doc.description || undefined,
-            document_type: doc.document_type || undefined,
-          });
+          const formData = new FormData();
+          formData.append('vehicle_id', String(doc.vehicle_id));
+          if (doc.maintenance_id) formData.append('maintenance_id', String(doc.maintenance_id));
+          formData.append('title', doc.title);
+          if (doc.description) formData.append('description', doc.description);
+          if (doc.document_type) formData.append('document_type', doc.document_type);
+          const created = await apiService.documents.create(formData);
           await DocumentService.markSynced(doc.id, created.id);
           result.pushed.documents++;
         } catch (error) {
@@ -1070,12 +1070,13 @@ class SyncManager {
             description: remote.description,
             document_type: remote.document_type,
             filename: remote.filename,
+            created_at: new Date().toISOString(),
           });
           await DocumentService.markSynced(remote.id, remote.id);
           result.pulled.documents++;
         } else {
           result.conflicts.resolved++;
-          const shouldUpdate = resolveConflict(existing, remote);
+          const shouldUpdate = resolveConflict(existing as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>);
           
           if (shouldUpdate) {
             await DocumentService.update(existing.id, {
