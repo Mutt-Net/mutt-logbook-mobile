@@ -39,3 +39,6 @@ settings.py
 
 # TypeScript
 *.tsbuildinfo
+
+# Worktrees
+.worktrees/
