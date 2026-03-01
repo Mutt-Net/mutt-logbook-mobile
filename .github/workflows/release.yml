@@ -41,52 +41,53 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Patch build.gradle for release signing
+      - name: Remove Gradle signing from release build
         run: |
-          python3 << 'PYEOF'
+          python3 - << 'EOF'
+          import re
           with open('android/app/build.gradle', 'r') as f:
-              c = f.read()
-          c = c.replace(
-              "    signingConfigs {\n        debug {\n            storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }",
-              "    signingConfigs {\n        debug {\n            storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n        release {\n            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {\n                storeFile file(MYAPP_UPLOAD_STORE_FILE)\n                storePassword MYAPP_UPLOAD_STORE_PASSWORD\n                keyAlias MYAPP_UPLOAD_KEY_ALIAS\n                keyPassword MYAPP_UPLOAD_KEY_PASSWORD\n            }\n        }\n    }"
-          )
-          c = c.replace(
-              '            signingConfig signingConfigs.debug\n            shrinkResources',
-              '            signingConfig signingConfigs.release\n            shrinkResources'
+              content = f.read()
+          # Target only the signingConfig in the release block:
+          # it's the only one immediately followed by shrinkResources
+          content = re.sub(
+              r'signingConfig signingConfigs\.debug(\s+shrinkResources)',
+              r'// signingConfig handled post-build\1',
+              content
           )
           with open('android/app/build.gradle', 'w') as f:
-              f.write(c)
-          print('Patched OK')
-          PYEOF
+              f.write(content)
+          print('Done')
+          EOF
 
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug
 
-      - name: Setup release signing
+      - name: Build unsigned release APK
+        run: cd android && ./gradlew assembleRelease
+
+      - name: Sign release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cp mutt-logbook.keystore android/app/mutt-logbook.keystore
           CLEAN_PASS=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n')
           CLEAN_ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d '\r\n')
           CLEAN_KEY_PASS=$(printf '%s' "$KEY_PASSWORD" | tr -d '\r\n')
-          {
-            printf 'MYAPP_UPLOAD_STORE_FILE=mutt-logbook.keystore\n'
-            printf 'MYAPP_UPLOAD_STORE_PASSWORD=%s\n' "$CLEAN_PASS"
-            printf 'MYAPP_UPLOAD_KEY_ALIAS=%s\n' "$CLEAN_ALIAS"
-            printf 'MYAPP_UPLOAD_KEY_PASSWORD=%s\n' "$CLEAN_KEY_PASS"
-          } >> android/gradle.properties
-
-      - name: Build release APK
-        run: cd android && ./gradlew assembleRelease
+          APKSIGNER="${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)/apksigner"
+          "$APKSIGNER" sign \
+            --ks mutt-logbook.keystore \
+            --ks-pass "pass:$CLEAN_PASS" \
+            --ks-key-alias "$CLEAN_ALIAS" \
+            --key-pass "pass:$CLEAN_KEY_PASS" \
+            --out android/app/build/outputs/apk/release/app-release-signed.apk \
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Prepare artifacts
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk \
             "mutt-logbook-${{ github.ref_name }}-debug.apk"
-          cp android/app/build/outputs/apk/release/app-release.apk \
+          cp android/app/build/outputs/apk/release/app-release-signed.apk \
             "mutt-logbook-${{ github.ref_name }}-release.apk"
 
       - name: Create GitHub Release
