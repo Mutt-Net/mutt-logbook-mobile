@@ -126,6 +126,8 @@ export default function SettingsScreen() {
       setVerifyingPin(false);
       setPendingAction(null);
       setPinInput('');
+      const reachable = await isApiReachable();
+      setApiReachable(reachable);
     } catch (error) {
       Alert.alert('Error', 'Failed to save API URL');
     }

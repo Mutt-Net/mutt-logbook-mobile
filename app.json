@@ -21,7 +21,8 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1a1a2e"
       },
-      "package": "com.muttnet.muttlogbook"
+      "package": "com.muttnet.muttlogbook",
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
