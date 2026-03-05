@@ -2,8 +2,8 @@
 
 ## Status
 - **Total tasks:** 52
-- **Completed:** 51 (P0-01~05, P1-01~04, P2-01~05, P3-01~05, P4-01~06, P4-08)
-- **Remaining:** 1 (P4-07 — TypeScript strict mode, intentionally deferred)
+- **Completed:** 52 (all tasks complete)
+- **Remaining:** 0
 
 ---
 
@@ -201,10 +201,11 @@
   - Spec: Code quality
   - Notes: All console statements replaced with logger.* calls via centralized logger in src/lib/logger.ts.
 
-- [ ] **P4-07**: Enable TypeScript strict null checks
+- [x] **P4-07**: Enable TypeScript strict null checks
+  - Completed: 2026-03-01
   - Spec: `tsconfig.json`
   - Required tests: No implicit any, strict null checks pass
-  - Notes: Currently `"strict": false`. Some loose typing in API responses and navigation.
+  - Notes: Fixed database.ts template literal corruption (24 `\`r\`n` sequences). Restored strict:true + added Stratum-Qwen exclude. Fixed 108 type errors: values arrays, entity type casts, screen useRoute migration (10 screens), sync.ts nullable fields, import corruption in DashboardScreen. Zero tsc errors, 17 tests passing.
 
 - [x] **P4-08**: Refactor OverviewScreen
   - Completed: 2026-02-28

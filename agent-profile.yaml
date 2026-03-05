@@ -1,0 +1,26 @@
+project: mutt-logbook
+stack: Expo 52 / React Native 0.76 / TypeScript / SQLite
+
+compute:
+  architecture: claude-sonnet-4-6
+  implementation: qwen2.5-coder:32b
+  ollama_host: http://192.168.0.100:11434
+
+task_classification:
+  holly_class:
+    - architecture decisions
+    - sync protocol design
+    - security review (TLS, auth)
+    - complex debugging (SQLite, native modules)
+    - new feature design
+  skutter_class:
+    - CRUD screen implementation
+    - test writing
+    - bug fixes with clear root cause
+    - form/validation logic
+    - adding fields to existing models
+
+validation:
+  test: npx expo start --no-dev (smoke test)
+  lint: npx tsc --noEmit
+  note: "No automated test runner configured yet — see docs/specs/TEST_FRAMEWORK_SPEC.md"

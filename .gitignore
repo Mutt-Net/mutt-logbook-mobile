@@ -43,3 +43,10 @@ settings.py
 
 # Worktrees
 .worktrees/
+
+# TLS certs
+lex-fleet-ca.crt
+*.crt
+
+# Local backups
+backups/
