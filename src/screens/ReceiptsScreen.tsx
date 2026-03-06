@@ -9,7 +9,9 @@ import {
   Modal,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { ReceiptService, VehicleService } from '../services/database';
 import { Receipt, Vehicle } from '../types';
@@ -52,6 +54,7 @@ export default function ReceiptsScreen() {
   const [formData, setFormData] = useState<ReceiptFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [pickedImage, setPickedImage] = useState<{ uri: string; fileName: string } | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, receiptsData] = await Promise.all([
@@ -78,10 +81,28 @@ export default function ReceiptsScreen() {
     setRefreshing(false);
   }, [loadData]);
 
+  const closeModal = () => {
+    setModalVisible(false);
+    setPickedImage(null);
+  };
+
   const handleAddPress = () => {
     setFormData({ ...initialFormData, date: new Date().toISOString().split('T')[0] });
     setEditingId(null);
+    setPickedImage(null);
     setModalVisible(true);
+  };
+
+  const pickReceipt = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      const asset = result.assets[0];
+      const fileName = asset.uri.split('/').pop() ?? 'receipt.jpg';
+      setPickedImage({ uri: asset.uri, fileName });
+    }
   };
 
   const handleEditPress = (item: Receipt) => {
@@ -93,6 +114,7 @@ export default function ReceiptsScreen() {
       notes: item.notes || '',
     });
     setEditingId(item.id);
+    setPickedImage(null);
     setModalVisible(true);
   };
 
@@ -129,7 +151,7 @@ export default function ReceiptsScreen() {
         amount: formData.amount ? parseFloat(formData.amount) : null,
         category: formData.category || null,
         notes: formData.notes.trim() || null,
-        filename: null,
+        filename: pickedImage?.uri ?? null,
         synced: 0,
         remote_id: null,
         updated_at: new Date().toISOString(),
@@ -139,7 +161,7 @@ export default function ReceiptsScreen() {
       } else {
         await ReceiptService.create(data);
       }
-      setModalVisible(false);
+      closeModal();
       await loadData();
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : 'Please try again';
@@ -227,11 +249,11 @@ export default function ReceiptsScreen() {
         visible={modalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={closeModal}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <TouchableOpacity onPress={closeModal}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
@@ -293,6 +315,15 @@ export default function ReceiptsScreen() {
               numberOfLines={3}
               style={styles.textArea}
             />
+            <TouchableOpacity style={styles.attachButton} onPress={pickReceipt}>
+              <Text style={styles.attachButtonText}>
+                {pickedImage ? 'Change Image' : 'Attach Image'}
+              </Text>
+            </TouchableOpacity>
+            {pickedImage && (
+              <Image source={{ uri: pickedImage.uri }} style={styles.imageThumbnail} resizeMode="cover" />
+            )}
+
             <View style={styles.modalSpacer} />
           </ScrollView>
         </View>
@@ -393,5 +424,15 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 14, color: '#FFFFFF' },
   chipTextSelected: { fontWeight: '600' },
   textArea: { height: 80, textAlignVertical: 'top' },
+  attachButton: {
+    marginTop: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    alignItems: 'center',
+  },
+  attachButtonText: { fontSize: 15, color: '#007AFF' },
+  imageThumbnail: { width: '100%', height: 160, borderRadius: 10, marginTop: 12 },
   modalSpacer: { height: 40 },
 });

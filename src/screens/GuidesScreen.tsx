@@ -54,6 +54,7 @@ export default function GuidesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<GuideFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
 
   const loadData = useCallback(async () => {
@@ -82,8 +83,41 @@ export default function GuidesScreen() {
   }, [loadData]);
 
   const handleAddPress = () => {
+    setEditingId(null);
     setFormData(initialFormData);
     setModalVisible(true);
+  };
+
+  const handleEditPress = (item: Guide) => {
+    setEditingId(item.id);
+    setFormData({
+      title: item.title,
+      category: item.category || '',
+      content: item.content || '',
+      interval_miles: item.interval_miles ? item.interval_miles.toString() : '',
+      interval_months: item.interval_months ? item.interval_months.toString() : '',
+      is_template: item.is_template,
+    });
+    setModalVisible(true);
+  };
+
+  const handleDeletePress = (item: Guide) => {
+    Alert.alert('Delete Guide', `Delete "${item.title}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await GuideService.delete(item.id);
+            await loadData();
+          } catch (error) {
+            const errMsg = error instanceof Error ? error.message : 'Please try again';
+            Alert.alert('Delete Failed', `Could not delete guide. ${errMsg}`);
+          }
+        },
+      },
+    ]);
   };
 
   const handleSave = async () => {
@@ -94,7 +128,7 @@ export default function GuidesScreen() {
 
     setSaving(true);
     try {
-      await GuideService.create({
+      const payload = {
         vehicle_id: formData.is_template ? null : vehicleId,
         title: formData.title,
         category: formData.category || null,
@@ -102,8 +136,14 @@ export default function GuidesScreen() {
         interval_miles: formData.interval_miles ? parseInt(formData.interval_miles, 10) : null,
         interval_months: formData.interval_months ? parseInt(formData.interval_months, 10) : null,
         is_template: formData.is_template,
-      });
+      };
+      if (editingId !== null) {
+        await GuideService.update(editingId, payload);
+      } else {
+        await GuideService.create(payload);
+      }
       setModalVisible(false);
+      setEditingId(null);
       await loadData();
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : 'Please try again';
@@ -174,6 +214,14 @@ export default function GuidesScreen() {
         <Text style={styles.itemInterval}>
           {formatInterval(item.interval_miles, item.interval_months)}
         </Text>
+        <View style={styles.itemActions}>
+          <TouchableOpacity onPress={() => handleEditPress(item)} style={styles.actionButton}>
+            <Text style={styles.actionEdit}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleDeletePress(item)} style={styles.actionButton}>
+            <Text style={styles.actionDelete}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Card>
   );
@@ -247,7 +295,7 @@ export default function GuidesScreen() {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Guide</Text>
+            <Text style={styles.modalTitle}>{editingId !== null ? 'Edit Guide' : 'Add Guide'}</Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
               <Text style={[styles.modalSave, saving && styles.modalSaveDisabled]}>
                 {saving ? 'Saving...' : 'Save'}
@@ -442,6 +490,21 @@ const styles = StyleSheet.create({
   itemInterval: {
     fontSize: 14,
     color: '#FF9500',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    paddingVertical: 4,
+  },
+  actionEdit: {
+    fontSize: 14,
+    color: '#007AFF',
+  },
+  actionDelete: {
+    fontSize: 14,
+    color: '#FF453A',
   },
   modalContainer: {
     flex: 1,

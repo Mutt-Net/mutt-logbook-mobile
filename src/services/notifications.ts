@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { VehicleService, ReminderService } from './database';
+import { getMileageDueReminders } from '../lib/notificationUtils';
 
 const LOOK_AHEAD_DAYS = 14;
 
@@ -66,6 +67,20 @@ export async function scheduleReminderNotifications(): Promise<void> {
       await Notifications.scheduleNotificationAsync({
         content: { title, body, sound: true },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
+      });
+    }
+
+    const mileageDue = getMileageDueReminders(reminders, vehicle.mileage);
+    for (const { reminder, milesUntilDue, isOverdue } of mileageDue) {
+      const title = isOverdue
+        ? `Overdue: ${reminder.type}`
+        : `Upcoming: ${reminder.type}`;
+      const body = isOverdue
+        ? `${vehicle.name} is ${Math.abs(milesUntilDue).toLocaleString()} mi overdue for ${reminder.type}`
+        : `${vehicle.name} needs ${reminder.type} in ${milesUntilDue.toLocaleString()} mi`;
+      await Notifications.scheduleNotificationAsync({
+        content: { title, body, sound: true },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now() + 5000) },
       });
     }
   }

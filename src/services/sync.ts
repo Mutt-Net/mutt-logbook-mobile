@@ -1,3 +1,4 @@
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   VehicleService,
@@ -14,8 +15,32 @@ import {
   DocumentService,
 } from './database';
 import apiService from './api';
+import { configService } from './config';
 import { addWifiListener, removeWifiListener } from './wifi';
 import { logger } from '../lib/logger';
+
+async function uploadFile(
+  uri: string,
+  name: string,
+  type: string,
+  endpoint: string,
+  extraFields: Record<string, string | number> = {},
+): Promise<Record<string, unknown>> {
+  const baseUrl = await configService.getApiUrl();
+  if (!baseUrl) throw new Error('API URL not configured');
+
+  const formData = new FormData();
+  formData.append('file', { uri, name, type } as unknown as Blob);
+  for (const [key, value] of Object.entries(extraFields)) {
+    formData.append(key, String(value));
+  }
+
+  const response = await axios.post(`${baseUrl}${endpoint}`, formData, {
+    timeout: 30000,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data as Record<string, unknown>;
+}
 
 const LAST_SYNC_KEY = 'last_sync_timestamp';
 const SYNC_ERRORS_KEY = 'sync_errors';
@@ -773,12 +798,15 @@ class SyncManager {
       for (const photo of unsynced) {
         try {
           if (photo.filename) {
-            const created = await apiService.photos.create({
-              uri: photo.filename,
-              name: photo.filename.split('/').pop() || 'photo.jpg',
-              type: 'image/jpeg',
-            } as any);
-            await VehiclePhotoService.markSynced(photo.id, created.id);
+            const fileName = photo.filename.split('/').pop() || 'photo.jpg';
+            const created = await uploadFile(
+              photo.filename,
+              fileName,
+              'image/jpeg',
+              '/api/vehicle-photos',
+              { vehicle_id: photo.vehicle_id },
+            );
+            await VehiclePhotoService.markSynced(photo.id, created.id as number);
             result.pushed.photos++;
           }
         } catch (error) {
@@ -974,15 +1002,27 @@ class SyncManager {
       const unsynced = await ReceiptService.getUnsynced();
       for (const receipt of unsynced) {
         try {
-          const created = await apiService.receipts.create({
-            vehicle_id: receipt.vehicle_id,
-            maintenance_id: receipt.maintenance_id || undefined,
-            date: receipt.date || undefined,
-            vendor: receipt.vendor || undefined,
-            amount: receipt.amount || undefined,
-            category: receipt.category || undefined,
-            notes: receipt.notes || undefined,
-          });
+          let created: { id: number };
+          if (receipt.filename) {
+            const fileName = receipt.filename.split('/').pop() ?? 'receipt.jpg';
+            const extra: Record<string, string | number> = { vehicle_id: receipt.vehicle_id };
+            if (receipt.date) extra['date'] = receipt.date;
+            if (receipt.vendor) extra['vendor'] = receipt.vendor;
+            if (receipt.amount != null) extra['amount'] = receipt.amount;
+            if (receipt.category) extra['category'] = receipt.category;
+            if (receipt.notes) extra['notes'] = receipt.notes;
+            created = await uploadFile(receipt.filename, fileName, 'image/jpeg', '/api/receipts', extra) as { id: number };
+          } else {
+            created = await apiService.receipts.create({
+              vehicle_id: receipt.vehicle_id,
+              maintenance_id: receipt.maintenance_id || undefined,
+              date: receipt.date || undefined,
+              vendor: receipt.vendor || undefined,
+              amount: receipt.amount || undefined,
+              category: receipt.category || undefined,
+              notes: receipt.notes || undefined,
+            });
+          }
           await ReceiptService.markSynced(receipt.id, created.id);
           result.pushed.receipts++;
         } catch (error) {
@@ -1043,13 +1083,23 @@ class SyncManager {
       const unsynced = await DocumentService.getUnsynced();
       for (const doc of unsynced) {
         try {
-          const formData = new FormData();
-          formData.append('vehicle_id', String(doc.vehicle_id));
-          if (doc.maintenance_id) formData.append('maintenance_id', String(doc.maintenance_id));
-          formData.append('title', doc.title);
-          if (doc.description) formData.append('description', doc.description);
-          if (doc.document_type) formData.append('document_type', doc.document_type);
-          const created = await apiService.documents.create(formData);
+          let created: { id: number };
+          if (doc.filename) {
+            const fileName = doc.filename.split('/').pop() ?? 'document';
+            const mimeType = 'application/octet-stream';
+            const extra: Record<string, string | number> = { vehicle_id: doc.vehicle_id, title: doc.title };
+            if (doc.description) extra['description'] = doc.description;
+            if (doc.document_type) extra['document_type'] = doc.document_type;
+            created = await uploadFile(doc.filename, fileName, mimeType, '/api/documents', extra) as { id: number };
+          } else {
+            const formData = new FormData();
+            formData.append('vehicle_id', String(doc.vehicle_id));
+            if (doc.maintenance_id) formData.append('maintenance_id', String(doc.maintenance_id));
+            formData.append('title', doc.title);
+            if (doc.description) formData.append('description', doc.description);
+            if (doc.document_type) formData.append('document_type', doc.document_type);
+            created = await apiService.documents.create(formData);
+          }
           await DocumentService.markSynced(doc.id, created.id);
           result.pushed.documents++;
         } catch (error) {

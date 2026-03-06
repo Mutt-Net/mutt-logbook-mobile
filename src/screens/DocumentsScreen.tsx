@@ -9,7 +9,9 @@ import {
   Modal,
   ScrollView,
   Alert,
+  Linking,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { DocumentService, VehicleService } from '../services/database';
 import { Document, Vehicle } from '../types';
@@ -48,6 +50,7 @@ export default function DocumentsScreen() {
   const [formData, setFormData] = useState<DocumentFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [pickedFile, setPickedFile] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
 
   const loadData = useCallback(async () => {
     const [vehicleData, docsData] = await Promise.all([
@@ -74,9 +77,15 @@ export default function DocumentsScreen() {
     setRefreshing(false);
   }, [loadData]);
 
+  const closeModal = () => {
+    setModalVisible(false);
+    setPickedFile(null);
+  };
+
   const handleAddPress = () => {
     setFormData(initialFormData);
     setEditingId(null);
+    setPickedFile(null);
     setModalVisible(true);
   };
 
@@ -87,7 +96,16 @@ export default function DocumentsScreen() {
       document_type: item.document_type || 'other',
     });
     setEditingId(item.id);
+    setPickedFile(null);
     setModalVisible(true);
+  };
+
+  const pickDocument = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+    if (!result.canceled && result.assets.length > 0) {
+      const asset = result.assets[0];
+      setPickedFile({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType ?? 'application/octet-stream' });
+    }
   };
 
   const handleDeletePress = (item: Document) => {
@@ -121,7 +139,7 @@ export default function DocumentsScreen() {
         title: formData.title.trim(),
         description: formData.description.trim() || null,
         document_type: formData.document_type || null,
-        filename: null,
+        filename: pickedFile?.uri ?? null,
         created_at: new Date().toISOString(),
         synced: 0,
         remote_id: null,
@@ -132,7 +150,7 @@ export default function DocumentsScreen() {
       } else {
         await DocumentService.create(data);
       }
-      setModalVisible(false);
+      closeModal();
       await loadData();
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : 'Please try again';
@@ -167,6 +185,11 @@ export default function DocumentsScreen() {
       </View>
       {item.description && (
         <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
+      )}
+      {item.filename && (
+        <TouchableOpacity onPress={() => Linking.openURL(item.filename as string)}>
+          <Text style={styles.filename} numberOfLines={1}>{item.filename.split('/').pop()}</Text>
+        </TouchableOpacity>
       )}
       <View style={styles.itemActions}>
         <TouchableOpacity style={styles.editButton} onPress={() => handleEditPress(item)}>
@@ -214,11 +237,11 @@ export default function DocumentsScreen() {
         visible={modalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={closeModal}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <TouchableOpacity onPress={closeModal}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
@@ -266,6 +289,12 @@ export default function DocumentsScreen() {
                 </View>
               </ScrollView>
             </View>
+
+            <TouchableOpacity style={styles.attachButton} onPress={pickDocument}>
+              <Text style={styles.attachButtonText}>
+                {pickedFile ? `File: ${pickedFile.name}` : 'Attach File'}
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.modalSpacer} />
           </ScrollView>
@@ -363,5 +392,15 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 14, color: '#FFFFFF' },
   chipTextSelected: { fontWeight: '600' },
   textArea: { height: 80, textAlignVertical: 'top' },
+  filename: { fontSize: 13, color: '#007AFF', marginBottom: 8 },
+  attachButton: {
+    marginTop: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    alignItems: 'center',
+  },
+  attachButtonText: { fontSize: 15, color: '#007AFF' },
   modalSpacer: { height: 40 },
 });
