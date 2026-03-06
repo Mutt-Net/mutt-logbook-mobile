@@ -183,7 +183,7 @@ export default function OverviewScreen() {
             {vehicle.reg ? ` • ${vehicle.reg}` : ''}
           </Text>
         </View>
-        <TouchableOpacity style={styles.editButton}>
+        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('Vehicle', { vehicleId: vehicle.id })}>
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
       </Card>

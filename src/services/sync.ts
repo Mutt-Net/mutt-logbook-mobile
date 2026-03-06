@@ -1,3 +1,4 @@
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   VehicleService,
@@ -14,8 +15,32 @@ import {
   DocumentService,
 } from './database';
 import apiService from './api';
+import { configService } from './config';
 import { addWifiListener, removeWifiListener } from './wifi';
 import { logger } from '../lib/logger';
+
+async function uploadFile(
+  uri: string,
+  name: string,
+  type: string,
+  endpoint: string,
+  extraFields: Record<string, string | number> = {},
+): Promise<Record<string, unknown>> {
+  const baseUrl = await configService.getApiUrl();
+  if (!baseUrl) throw new Error('API URL not configured');
+
+  const formData = new FormData();
+  formData.append('file', { uri, name, type } as unknown as Blob);
+  for (const [key, value] of Object.entries(extraFields)) {
+    formData.append(key, String(value));
+  }
+
+  const response = await axios.post(`${baseUrl}${endpoint}`, formData, {
+    timeout: 30000,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data as Record<string, unknown>;
+}
 
 const LAST_SYNC_KEY = 'last_sync_timestamp';
 const SYNC_ERRORS_KEY = 'sync_errors';
@@ -773,12 +798,15 @@ class SyncManager {
       for (const photo of unsynced) {
         try {
           if (photo.filename) {
-            const created = await apiService.photos.create({
-              uri: photo.filename,
-              name: photo.filename.split('/').pop() || 'photo.jpg',
-              type: 'image/jpeg',
-            } as any);
-            await VehiclePhotoService.markSynced(photo.id, created.id);
+            const fileName = photo.filename.split('/').pop() || 'photo.jpg';
+            const created = await uploadFile(
+              photo.filename,
+              fileName,
+              'image/jpeg',
+              '/api/vehicle-photos',
+              { vehicle_id: photo.vehicle_id },
+            );
+            await VehiclePhotoService.markSynced(photo.id, created.id as number);
             result.pushed.photos++;
           }
         } catch (error) {
